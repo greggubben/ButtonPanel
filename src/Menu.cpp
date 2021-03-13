@@ -223,7 +223,11 @@ bool MenuTop::setActiveMenuButton(vector<MenuButton*> *mButtons, MenuButton *act
   for (; button != mButtons->end(); button++) {
     if ((*button) == activeButton) {
       // This is the button to make active
-      (*button)->setActive();
+      if (!(*button)->hasShortPressCallback()) {
+        // Only set to active if there is no callback function
+        // otherwise expect the callback to handle setting button active state
+        (*button)->setActive();
+      }
       buttonFound = true;
     }
     else {
@@ -365,6 +369,15 @@ bool Menu::setup() {
   }
 
   calculateTopButtonDimensions();
+
+  wasTouched = false;
+  debounceTouched = false;
+  shortPress = false;
+  longPress = false;
+  swipeLeft = false;
+  swipeRight = false;
+  lastPressTime = millis();
+
   return true;
 }
 
@@ -484,6 +497,128 @@ tuple <bool, MenuItem *> Menu::handleTouch(int16_t pressX, int16_t pressY) {
   return make_tuple(newButtonActive, buttonPressed);
 }
 
+
+bool Menu::handle(calibrateTouchCallback _calibrateTouch) {
+  bool redraw = false;
+  bool doEvent = false;
+  bool resetVariables = false;
+
+  // Get current state of screen being touched
+  bool isTouched = _ts->touched();
+
+  // There is a change in touch state
+  if (isTouched != wasTouched) {
+    // Change in touch state
+    lastPressTime = millis();
+  }
+
+  // Make sure the screen touch state has stabilized
+  if ((millis() - lastPressTime) > DEBOUNCE_DELAY) {
+
+    // Is there a change in touch state?
+    if (isTouched != debounceTouched) {
+      Serial.println("Touch Change");
+      debounceTouched = isTouched;
+
+      // New press
+      if (isTouched) {
+        Serial.println("New Touch");
+        // On first press - Don't which of the 4 modes yet
+        shortPress = false;
+        longPress = false;
+        swipeLeft = false;
+        swipeRight = false;
+        pressedButton = nullptr;  // New press, don't know button yet
+
+        // Find the calibrated X and Y of the press
+        TS_Point point = _ts->getPoint();
+        pressX = point.x;
+        pressY = point.y;
+        if (_calibrateTouch) {
+          (*_calibrateTouch)(&pressX, &pressY);
+        }
+
+        // Figure out which button was pressed
+        tie(redraw, pressedButton) = handleTouch(pressX, pressY);
+      }
+      else {
+        Serial.println("New Stop Touch");
+        // Stopped touching
+        if (shortPress && !longPress) {
+          Serial.println("Lets do the Short Press");
+          doEvent = true;
+        }
+        resetVariables = true;
+      }
+    }
+
+    // Is the screen still being touched?
+    if (isTouched) {
+      if (!shortPress && (millis() - lastPressTime) > SHORTPRESS_DELAY) {
+        Serial.println("Short Press");
+        // New Short Press occurred
+        // Wait to see if Long Press occurred
+        // otherwise will perform on unTouch
+        shortPress = true;
+      }
+
+      // Short Press being true ensures the press is still active
+      if (shortPress && (millis() - lastPressTime) > LONGPRESS_DELAY) {
+        if (!longPress) {
+          Serial.println("Long Press");
+          // New Long press occurred
+          longPress = true;
+          // Do Immediately
+          doEvent = true;
+        }
+      }
+    }
+  }
+
+  if (doEvent) {
+    Serial.println("Do Event");
+    if (longPress) {
+      Serial.println("Do Long Event");
+      // Handle any Long Press callback actions
+      // Do immediately, do not wait for unTouch
+      if (pressedButton) {
+        Serial.println("Do Long Event Callback");
+        redraw = pressedButton->callbackLongPress();
+      }
+    }
+    else if (shortPress) {
+      Serial.println("Do Short Event");
+      // Handle any Short Press callback actions
+      // Long press is fired as soon as it occurs
+      if (pressedButton) {
+        Serial.println("Do Short Event Callback");
+        redraw = pressedButton->callbackShortPress();
+      }
+    }
+  }
+
+  // Re-draw the menus
+  if (redraw) {
+    draw();
+  }
+
+  if (resetVariables) {
+    Serial.println("Reset Variables");
+    // Just stopped touching
+    // Reset everything for next touch event
+    shortPress = false;
+    longPress = false;
+    swipeLeft = false;
+    swipeRight = false;
+    pressedButton = nullptr;
+  }
+
+  // Keep track of last touch state so changes can be identified.
+  wasTouched = isTouched;
+
+  // Provide current state of the screen being touched
+  return isTouched;
+}
 
 /*********************
  * Non Class Functions

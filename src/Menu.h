@@ -50,8 +50,16 @@ using namespace std;
 #define DEFAULT_BAR_HEIGHT DEFAULT_BUTTON_CORNER
 
 
+// Define minimum delays for when screen is touched
+
+#define DEBOUNCE_DELAY 50
+#define SHORTPRESS_DELAY 60
+#define LONGPRESS_DELAY 400
+
+
 // Generic definition for button callbacks
 typedef bool (*buttonPressCallback)();
+typedef void (*calibrateTouchCallback)(int16_t*, int16_t*);
 
 
 /*********************
@@ -166,17 +174,20 @@ class Menu {
     Menu(Adafruit_GFX *tft, XPT2046_Touchscreen *ts);
     Menu(Adafruit_GFX *tft, XPT2046_Touchscreen *ts, vector<MenuTop*> *tMenus = nullptr);
     Menu(Adafruit_GFX *tft, XPT2046_Touchscreen *ts, vector<MenuTop*> *tMenus, uint16_t bgColor);
+    
+    bool handle(calibrateTouchCallback _calibrateTouch = nullptr);
+
     void setTopButtons(int16_t buttons);
     void setTopHeight(int16_t height);
 
     bool setup();
     void draw();
 
-    tuple <bool, MenuItem *> handleTouch(int16_t pressX, int16_t pressY);
 
     static bool setActiveTopMenu(vector<MenuTop*> *tMenus, MenuTop *activeMenu);
 
   private:
+    tuple <bool, MenuItem *> handleTouch(int16_t pressX, int16_t pressY);
     void init(Adafruit_GFX *tft, XPT2046_Touchscreen *ts, vector<MenuTop*> *tMenus = nullptr, uint16_t bgColor = DEFAULT_BACKGROUND_COLOR);
     void calculateTopButtonDimensions();
     Adafruit_GFX *_tft;
@@ -196,6 +207,19 @@ class Menu {
     bool clearScreenBeforeDraw = true;
 
     vector<MenuTop*> *topMenus = nullptr;
+
+    // Manage state of Menu Interactions
+    bool wasTouched = false;      // Prevous loop touch state. Used with isTouched 
+    bool debounceTouched = false; // Post Debounce Delay last touch state. Used with isTouched 
+    bool shortPress = false;
+    bool longPress = false;
+    bool swipeLeft = false;
+    bool swipeRight = false;
+    int16_t pressX = 0;
+    int16_t pressY = 0;
+    unsigned long lastPressTime = 0;  // the last time the screen touch state changed
+    MenuItem *pressedButton = nullptr;
+
 };
 
 

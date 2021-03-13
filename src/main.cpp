@@ -66,9 +66,9 @@ XPT2046_Touchscreen ts(TS_CS);
 #define TS_MAXX 3500
 #define TS_MAXY 3800
 
-// Define minimum delays for when screen is touched
-#define DEBOUNCE_DELAY 50
-#define LONGPRESS_DELAY 250
+// Time to wait to dim or turn off screen
+#define SCREEN_DIM_DELAY 60000    // 1 minute
+#define SCREEN_OFF_DELAY 600000   // 10 minutes
 
 
 //
@@ -116,54 +116,51 @@ void configModeCallback (WiFiManager *myWiFiManager) {
 int16_t screenWidth;
 int16_t screenHeight;
 bool wasTouched = false;
-bool shortPress = false;
-bool longPress = false;
-unsigned long lastPressTime = 0;  // the last time the output pin was toggled
-MenuItem *pressedButton = nullptr;
+unsigned long lastPressTime = 0;  // the last time the screen touch state changed
 
 
 /*
  * Calibrate the raw input to the screen pixels
  */
-void calibrateTouch(TS_Point *tsPoint, int16_t *pressX, int16_t *pressY) {
+void calibrateTouch(int16_t *pressX, int16_t *pressY) {
 
 #ifdef CALIBRATE_DEBUG
   tft.fillRect(0, screenHeight-80, screenWidth, 80, ILI9341_BLACK);
   tft.setTextColor(ILI9341_YELLOW);
   tft.setTextSize(2);
   tft.setCursor(0,screenHeight-80);
-  tft.printf("raw x:%4d y:%4d\n", tsPoint->x, tsPoint->y);
+  tft.printf("raw x:%4d y:%4d\n", *pressX, *pressY);
 
-  Serial.print("raw tsPoint.x = ");
-  Serial.println(tsPoint->x);
-  Serial.print("raw tsPoint.y = ");
-  Serial.println(tsPoint->y);
+  Serial.print("raw x = ");
+  Serial.println(*pressX);
+  Serial.print("raw y = ");
+  Serial.println(*pressY);
 #endif
 
   // Scale using the calibration #'s
   // and rotate coordinate system
   //TODO: Resolve map() ambiguity with mDNS
   //tsPoint->y = map(tsPoint->y, TS_MINY, TS_MAXY, 0, screenHeight);
-  tsPoint->y = (tsPoint->y - TS_MINY) * (screenHeight) / (TS_MAXY - TS_MINY);
+  *pressY = (*pressY - TS_MINY) * (screenHeight) / (TS_MAXY - TS_MINY);
   //tsPoint->x = map(tsPoint->x, TS_MINX, TS_MAXX, 0, screenWidth);
-  tsPoint->x = (tsPoint->x - TS_MINX) * (screenWidth) / (TS_MAXX - TS_MINX);
+  *pressX = (*pressX - TS_MINX) * (screenWidth) / (TS_MAXX - TS_MINX);
 
 #ifdef CALIBRATE_DEBUG
-  tft.printf("map x:%4d y:%4d\n", tsPoint->x, tsPoint->y);
-  Serial.print("map tsPoint.x = ");
-  Serial.println(tsPoint->x);
-  Serial.print("map tsPoint.y = ");
-  Serial.println(tsPoint->y);
+  tft.printf("map x:%4d y:%4d\n", *pressX, *pressY);
+  Serial.print("map x = ");
+  Serial.println(*pressX);
+  Serial.print("map y = ");
+  Serial.println(*pressY);
 #endif
 
-  *pressY = screenHeight - tsPoint->y;
-  *pressX = tsPoint->x;
+  *pressY = screenHeight - *pressY;
+  //*pressX = *pressX;
 
 #ifdef CALIBRATE_DEBUG
   tft.printf("ali x:%4d y:%4d\n", *pressX, *pressY);
-  Serial.print("aligned pressX = ");
+  Serial.print("aligned X = ");
   Serial.println(*pressX);
-  Serial.print("aligned pressY = ");
+  Serial.print("aligned Y = ");
   Serial.println(*pressY);
 #endif
 
@@ -183,9 +180,9 @@ void calibrateTouch(TS_Point *tsPoint, int16_t *pressX, int16_t *pressY) {
 #ifdef CALIBRATE_DEBUG
   tft.fillCircle(*pressX, *pressY, 3, ILI9341_YELLOW);
   tft.printf("bnd x:%4d y:%4d\n", *pressX, *pressY);
-  Serial.print("bounded pressX = ");
+  Serial.print("bounded X = ");
   Serial.println(*pressX);
-  Serial.print("bounded pressY = ");
+  Serial.print("bounded Y = ");
   Serial.println(*pressY);
   //delay(5000);
 #endif
@@ -316,10 +313,6 @@ void setup(void)
 
   // refesh all and display menu
   menu.draw();
-  wasTouched = false;
-  shortPress = false;
-  longPress = false;
-  lastPressTime = millis();
 
 
   //
@@ -338,79 +331,20 @@ void loop() {
   ArduinoOTA.handle();
   MDNS.update();
 
-  bool redraw = false;
+  bool isTouched = menu.handle(&calibrateTouch);
 
-  // Get current state of screen being touched
-  bool isTouched = ts.touched();
-
-  // There is a change in touch state
+    // There is a change in touch state
   if (isTouched != wasTouched) {
     // Change in touch state
     lastPressTime = millis();
   }
 
-  // Make sure the screen touch state has stabilized
-  if ((millis() - lastPressTime) > DEBOUNCE_DELAY) {
-
-    // Is there a change in touch state?
-    if (isTouched != shortPress) {
-
-      // New press
-      if (isTouched) {
-        // On first press:
-        shortPress = true;        // New presses are treated as short to start
-        longPress = false;        // New press, don't know if long yet
-        pressedButton = nullptr;  // New press, don't know button yet
-
-        // Find the calibrated X and Y of the press
-        int16_t pressX;
-        int16_t pressY;
-        TS_Point point = ts.getPoint();
-        calibrateTouch(&point, &pressX, &pressY);
-
-        // Figure out which button was pressed
-        tie(redraw, pressedButton) = menu.handleTouch(pressX, pressY);
-        //if (pressedButton) {
-          // Found a button pressed and it should now be set as active
-          // need to redraw screen to show active
-          //redraw = true;
-        //}
-      }
-      else {
-        // Stopped touching
-        if (shortPress && !longPress) {
-          // Handle any Short Press callback actions
-          // Long press is fired as soon as it occurs
-          if (pressedButton) {
-            redraw = pressedButton->callbackShortPress();
-          }
-        }
-        // Reset everything for next touch event
-        shortPress = false;
-        longPress = false;
-        pressedButton = nullptr;
-      }
-    }
-    // Is the screen still being touched?
-    // Short Press being true ensures the press is still active
-    if (shortPress && (millis() - lastPressTime) > LONGPRESS_DELAY) {
-      if (!longPress) {
-        // New Long press occurred
-        longPress = true;
-        // Handle any Long Press callback actions
-        // Do immediately, do not wait for unTouch
-        if (pressedButton) {
-          redraw = pressedButton->callbackLongPress();
-        }
-      }
-    }
-  }
-
-  // Re-draw the menus
-  if (redraw) {
-    menu.draw();
-  }
-
-  // Keep track of last state so changes can be identified.
+  // Is it time to dim the screen?
+  //if ((millis() - lastPressTime) > SCREEN_DIM_DELAY) {
+  //}
+  // Is it time to turn off the screen?
+  //if ((millis() - lastPressTime) > SCREEN_OFF_DELAY) {
+  //}
+  
   wasTouched = isTouched;
 }
