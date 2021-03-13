@@ -1,5 +1,13 @@
 /*
  * Menu
+ * 
+ * A Menu is made up of 0 to many MenuTop objects.
+ *   However 0 MenuTop objects is not very useful.
+ * The MenuTop objects contains 0 to many MenuButton objectes.
+ * 
+ * Both MenuTop and MenuButton objects inherite from MenuItem
+ * which contains many common data and methods used to display a
+ * button on the screen.
  */
 
 #include <Arduino.h>
@@ -12,8 +20,9 @@
 
 using namespace std;
 
+
 /*********************
- * MenuButton Class
+ * MenuButton Class functions
  *********************/
 
 /*
@@ -44,9 +53,18 @@ bool MenuItem::callbackLongPress() {
 
 
 /*********************
- * MenuButton Class
+ * MenuButton Class functions
  *********************/
 
+/*
+ * Constructor
+ *
+ * @param label       Label or name display on button
+ * @param x,y         X and Y button position (not pixel position)
+ * @param buttonColor Optional button color. Default is DEFAULT_BUTTON_COLOR
+ * @param onShortPress Optional callback function when a short press is performed
+ * @param onLongPress Optional callback function when a long press is performed
+ */ 
 MenuButton::MenuButton(const char* label, int16_t x, int16_t y, uint16_t buttonColor, buttonPressCallback onShortPress, buttonPressCallback onLongPress) {
   name = String(label);
   positionX = x;
@@ -60,7 +78,7 @@ MenuButton::MenuButton(const char* label, int16_t x, int16_t y, uint16_t buttonC
 
 
 /*
- * Draw the Top Menu button
+ * Draw the Button at the pixel position and size provided
  */
 void MenuButton::draw(Adafruit_GFX *tft, int16_t topButtonX, int16_t topButtonY, int16_t topButtonWidth, int16_t topButtonHeight) {
   Serial.print("    ButtonMenu: ");
@@ -79,6 +97,12 @@ void MenuButton::draw(Adafruit_GFX *tft, int16_t topButtonX, int16_t topButtonY,
 
 }
 
+
+//
+// Check to see if the button was touched.
+//
+// @return true if the button should be redrawn
+//
 bool MenuButton::handleTouch() {
   bool touchHandled = true;
   Serial.println("Button Handle Press");
@@ -88,21 +112,40 @@ bool MenuButton::handleTouch() {
   return touchHandled;
 }
 
+
 /*********************
  * MenuTop Class
  *********************/
 
-MenuTop::MenuTop(const char* label, int16_t buttonsAcross, int16_t buttonsDown) {
-  init(label, buttonsAcross, buttonsDown, nullptr, DEFAULT_TOP_COLOR);
-}
+/*
+ * Constructor
+ *
+ * @param label         Label or name display on top button
+ * @param buttonsAcross Number of buttons to display across panel
+ * @param buttonsDown   Number of buttons to display down panel
+ * @param menuColor     Optional MenuTop color. Default DEFAULT_TOP_COLOR
+ */ 
 MenuTop::MenuTop(const char* label, int16_t buttonsAcross, int16_t buttonsDown, uint16_t menuColor) {
   init(label, buttonsAcross, buttonsDown, nullptr, menuColor);
 }
 
+/*
+ * Constructor
+ *
+ * @param label         Label or name display on top button
+ * @param buttonsAcross Number of buttons to display across panel
+ * @param buttonsDown   Number of buttons to display down panel
+ * @param menuButtons   Vector containing the list of buttons to display in the panel
+ * @param menuColor     Optional MenuTop color. Default DEFAULT_TOP_COLOR
+ */ 
 MenuTop::MenuTop(const char* label, int16_t buttonsAcross, int16_t buttonsDown, vector<MenuButton*> *menuButtons, uint16_t menuColor) {
   init(label, buttonsAcross, buttonsDown, menuButtons, menuColor);
 }
 
+
+//
+// Initialize the Menu Top variables.
+//
 void MenuTop::init(const char* label, int16_t buttonsAcross, int16_t buttonsDown, vector<MenuButton*> *menuButtons, uint16_t menuColor) {
   name = String(label);
   buttonsX = buttonsAcross;
@@ -114,9 +157,10 @@ void MenuTop::init(const char* label, int16_t buttonsAcross, int16_t buttonsDown
   textColor = DEFAULT_TOP_COLOR;
 }
 
-/*
- * Draw the Top Menu button
- */
+
+//
+// Draw the Top Menu button
+//
 void MenuTop::draw(Adafruit_GFX *tft, int16_t topButtonX, int16_t topButtonY, int16_t topButtonWidth, int16_t topButtonHeight) {
   Serial.print("  TopMenu: ");
   Serial.println(name);
@@ -134,16 +178,20 @@ void MenuTop::draw(Adafruit_GFX *tft, int16_t topButtonX, int16_t topButtonY, in
 
 }
 
-/*
- * Draw a button panel if they exist
- */
+
+//
+// Draw a button panel if they exist
+//
 void MenuTop::drawPanelButtons(Adafruit_GFX *tft, int16_t panelX, int16_t panelY, int16_t panelWidth, int16_t panelHeight) {
   if (buttons) {
+    // Calculate the size of the buttons
     int16_t buttonWidth = panelWidth / buttonsX;
     int16_t buttonHeight = panelHeight / buttonsY;
 
+    // Go through each button
     auto button = buttons->begin();
     for (; button != buttons->end(); button++) {
+      // Get the button's button position
       int16_t positionX = (*button)->getPositionX();
       int16_t positionY = (*button)->getPositionY();
       Serial.print("   button->name:");
@@ -152,27 +200,34 @@ void MenuTop::drawPanelButtons(Adafruit_GFX *tft, int16_t panelX, int16_t panelY
       Serial.println(positionX);
       Serial.print("   button->y");
       Serial.println(positionY);
+      // Convert button position to pixel position
       int16_t buttonTopLeftX = positionX * buttonWidth + panelX;
       int16_t buttonTopLeftY = positionY * buttonHeight + panelY;
 
+      // Draw the button at the pixel position
       (*button)->draw(tft, buttonTopLeftX, buttonTopLeftY, buttonWidth, buttonHeight);
-
-
     }
 
   }
 }
 
+
+//
+// Find and set the button to be active
+// Set all other buttons as inactive
+//
 bool MenuTop::setActiveMenuButton(vector<MenuButton*> *mButtons, MenuButton *activeButton) {
   bool buttonFound = false;
 
   auto button = mButtons->begin();
   for (; button != mButtons->end(); button++) {
     if ((*button) == activeButton) {
+      // This is the button to make active
       (*button)->setActive();
       buttonFound = true;
     }
     else {
+      // All other buttons are set to inactive
       (*button)->setInactive();
     }
   }
@@ -180,6 +235,12 @@ bool MenuTop::setActiveMenuButton(vector<MenuButton*> *mButtons, MenuButton *act
   return buttonFound;
 }
 
+
+//
+// Handle a touch event
+// First checks to see if a button was touched
+// Then sets the touched button as active.
+//
 tuple <bool, MenuItem *> MenuTop::handleTouch(int16_t pressX, int16_t pressY, int16_t panelX, int16_t panelY, int16_t panelWidth, int16_t panelHeight) {
 
   MenuItem *buttonPressed = nullptr;
@@ -187,27 +248,35 @@ tuple <bool, MenuItem *> MenuTop::handleTouch(int16_t pressX, int16_t pressY, in
   bool newButtonPress = false;
 
   if (buttons) {
+    // Calculate the size of the button
     int16_t buttonWidth = panelWidth / buttonsX;
     int16_t buttonHeight = panelHeight / buttonsY;
 
+    // Go through each button to check if it was touched
     auto button = buttons->begin();
     for (; button != buttons->end(); button++) {
+      // Get the position of the button
       int16_t positionX = (*button)->getPositionX();
       int16_t positionY = (*button)->getPositionY();
 
+      // Convert the button position to pixel positions
       int16_t buttonMinX = positionX * buttonWidth + panelX;
       int16_t buttonMaxX = buttonMinX + buttonWidth;
       int16_t buttonMinY = positionY * buttonHeight + panelY;
       int16_t buttonMaxY = buttonMinY + buttonHeight;
 
+      // Compare button pixel positions to where the touch occurred
       if ((buttonMinX < pressX && pressX < buttonMaxX) &&
           (buttonMinY < pressY && pressY < buttonMaxY)) {
+        // This button was touched
         if (!(*button)->isActive()) {
+          // Button was not active before, new press
           newButtonPress = true;
         }
         setActiveMenuButton(buttons, (*button));
         Serial.print("Button Pressed: ");
         Serial.println((*button)->getName());
+        // Remember which button
         buttonPressed = (*button);
       }
     }
@@ -216,6 +285,7 @@ tuple <bool, MenuItem *> MenuTop::handleTouch(int16_t pressX, int16_t pressY, in
 
   return make_tuple(newButtonPress, buttonPressed);
 }
+
 
 /*********************
  * Menu Class
@@ -233,6 +303,9 @@ Menu::Menu(Adafruit_GFX *tft, XPT2046_Touchscreen *ts, vector<MenuTop*> *tMenus,
   init(tft, ts, tMenus, bgColor);
 }
 
+//
+// Initialize the Menu variables
+//
 void Menu::init(Adafruit_GFX *tft, XPT2046_Touchscreen *ts, vector<MenuTop*> *tMenus, uint16_t bgColor) {
   _tft = tft;
   _ts = ts;
@@ -244,16 +317,29 @@ void Menu::init(Adafruit_GFX *tft, XPT2046_Touchscreen *ts, vector<MenuTop*> *tM
 
 }
 
+
+//
+// Set the number of buttons across the top
+//
 void Menu::setTopButtons(int16_t buttons) {
   topButtons = buttons;
   calculateTopButtonDimensions();
 }
 
+
+//
+// Set the pixel size of the top menu bar
+//
 void Menu::setTopHeight(int16_t height) {
   topHeight = height;
   calculateTopButtonDimensions();
 }
 
+
+//
+// Calculate the sizes for the Top Menu Buttons
+// Also calculate the size of the bottom panel
+//
 void Menu::calculateTopButtonDimensions() {
   topButtonHeight = topHeight;
   topButtonWidth = screenWidth / topButtons;
@@ -263,21 +349,34 @@ void Menu::calculateTopButtonDimensions() {
   panelHeight = screenHeight - panelY;
 }
 
+
+//
+// Set up the Menu by initializing variables
+// The TFT must be started before this is called
+//
 bool Menu::setup() {
   screenHeight = _tft->height();
   screenWidth  = _tft->width();
-  calculateTopButtonDimensions();
+
+  // Check that the screen has a size
   if (screenHeight == 0 || screenWidth == 0) {
     // TFT not started.
     return false;
   }
 
+  calculateTopButtonDimensions();
   return true;
 }
 
 
+//
+// Draw the top menu and the corresponding button panel
+//
 void Menu::draw() {
-  _tft->fillScreen(ILI9341_BLACK);
+  if (clearScreenBeforeDraw) {
+    _tft->fillScreen(DEFAULT_BACKGROUND_COLOR);
+    clearScreenBeforeDraw = false;
+  }
   Serial.print("Height:");
   Serial.println(screenHeight);
   Serial.print("Width:");
@@ -307,6 +406,8 @@ void Menu::draw() {
       pos++;
     }
   }
+
+  // Draw the separator bar in the color of the active top menu
   int16_t barHeight = DEFAULT_BAR_HEIGHT;
   int16_t barWidth = screenWidth - (2*DEFAULT_PADDING_X);
   int16_t barX = DEFAULT_PADDING_X;
@@ -314,16 +415,23 @@ void Menu::draw() {
   _tft->fillRect(barX, barY, barWidth, barHeight, barColor);
 }
 
+
+//
+// Find and set the Top Menu button to be active
+// Set all other top menu buttons as inactive
+//
 bool Menu::setActiveTopMenu(vector<MenuTop*> *tMenus, MenuTop *activeMenu) {
   bool menuFound = false;
 
   auto topMenu = tMenus->begin();
   for (; topMenu != tMenus->end(); topMenu++) {
+    // Set as active
     if ((*topMenu) == activeMenu) {
       (*topMenu)->setActive();
       menuFound = true;
     }
     else {
+      // Set all others as inactive
       (*topMenu)->setInactive();
     }
   }
@@ -331,10 +439,15 @@ bool Menu::setActiveTopMenu(vector<MenuTop*> *tMenus, MenuTop *activeMenu) {
   return menuFound;
 }
 
+
+//
+// Handle a Touch Event by checking if any of the buttons were touched.
+// If a MenuTop was pressed, then change the screen accordingly
+// If the touch was in the panel, then check the MenuTop's buttons
+//
 tuple <bool, MenuItem *> Menu::handleTouch(int16_t pressX, int16_t pressY) {
 
   MenuItem *buttonPressed = nullptr;
-//  *buttonPressed = nullptr;
   bool newButtonActive = true;
 
   if (pressY < topButtonHeight) {
@@ -347,17 +460,19 @@ tuple <bool, MenuItem *> Menu::handleTouch(int16_t pressX, int16_t pressY) {
       int16_t buttonTopRightX = buttonTopLeftX + topButtonWidth;
       if (buttonTopLeftX < pressX && pressX < buttonTopRightX) {
         if (!(*topMenu)->isActive()) {
+          // New Top Menu
+          clearScreenBeforeDraw = true;
           Serial.print("Top Menu Button ");
           Serial.println((*topMenu)->getName());
-          setActiveTopMenu(topMenus,(*topMenu));
-          buttonPressed = (*topMenu);
+          newButtonActive = setActiveTopMenu(topMenus,(*topMenu));
         }
+        buttonPressed = (*topMenu);
       }
       pos++;
     }
   }
   else {
-    Serial.println("Canvas");
+    Serial.println("Panel");
     auto topMenu = topMenus->begin();
     for (; topMenu != topMenus->end(); topMenu++) {
       if ((*topMenu)->isActive()) {
@@ -369,10 +484,16 @@ tuple <bool, MenuItem *> Menu::handleTouch(int16_t pressX, int16_t pressY) {
   return make_tuple(newButtonActive, buttonPressed);
 }
 
+
 /*********************
  * Non Class Functions
  *********************/
 
+//
+// Draw the Button
+// If the button is inactive only the outline is drawn
+// If the button is active a solid button is drawn
+//
 void drawButtonOutline(Adafruit_GFX *tft, int16_t buttonX, int16_t buttonY, int16_t buttonWidth, int16_t buttonHeight, uint16_t buttonColor, bool buttonActive) {
 /*
   if ((buttonX < 0) || (buttonX >= BUTTONS_X )) {
@@ -389,6 +510,7 @@ void drawButtonOutline(Adafruit_GFX *tft, int16_t buttonX, int16_t buttonY, int1
   int16_t topLeftY = buttonY + DEFAULT_PADDING_Y;
   int16_t width = buttonWidth - (2*DEFAULT_PADDING_X);
   int16_t height = buttonHeight - (2*DEFAULT_PADDING_Y);
+  tft->fillRect(topLeftX, topLeftY, width, height, DEFAULT_BACKGROUND_COLOR);
   if (buttonActive) {
     tft->fillRoundRect(topLeftX, topLeftY, width, height, DEFAULT_BUTTON_CORNER, buttonColor);
   }
@@ -398,6 +520,9 @@ void drawButtonOutline(Adafruit_GFX *tft, int16_t buttonX, int16_t buttonY, int1
 }
 
 
+//
+// Function to print text centered vertically and horizontally to a single pixel
+//
 void centerText (Adafruit_GFX *tft, String text, int16_t centerX, int16_t centerY, int16_t textSize, uint16_t textColor) {
 
   tft->setTextSize(textSize);

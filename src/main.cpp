@@ -5,7 +5,7 @@
 #include <Arduino.h>
 #include <LittleFS.h>
 #include <WiFiManager.h>        // For managing the Wifi Connection
-//#include <ESP8266mDNS.h>        // For running OTA and Web Server
+#include <ESP8266mDNS.h>        // For running OTA and Web Server
 #include <WiFiUdp.h>            // For running OTA
 #include <ArduinoOTA.h>         // For running OTA
 #include <SPI.h>
@@ -14,28 +14,36 @@
 #include <XPT2046_Touchscreen.h>
 #include <vector>
 #include "Menu.h"
+#include "onair.h"
 //#include <TelnetSerial.h>       // For debugging via Telnet
 
-//using arduino::map;
-
 // Uncomment the following define to debug the screen calibration
-#define CALIBRATE_DEBUG
+//#define CALIBRATE_DEBUG
 
+
+//
 // Device Info
-const char* devicename = "deskButtonPanel";
-const char* devicepassword = "paneladmin";
+//
+const char* devicename = "deskButtonPanel";   // Name of device used by WiFiManager and OTA/mDNS
+const char* devicepassword = "paneladmin";    // Password used by WiFiManager and OTA
 
-//for using LED as a startup status indicator
-#include <Ticker.h>
-Ticker ticker;
-boolean ledState = LOW;   // Used for blinking LEDs when WifiManager in Connecting and Configuring
 
-// On board LED used to show status
+//
+// Configuration to blink built in LED during startup
+//
 #ifndef LED_BUILTIN
 #define LED_BUILTIN 13 // ESP32 DOES NOT DEFINE LED_BUILTIN
 #endif
-const int ledPin =  LED_BUILTIN;  // the number of the LED pin
+//for using LED as a startup status indicator
+#include <Ticker.h>
+Ticker ticker;            // Process to blink LED during setup
+boolean ledState = LOW;   // Used for blinking LEDs when WifiManager in Connecting and Configuring
+const int ledPin =  LED_BUILTIN;  // On board LED used to show status
 
+
+//
+// TFT Touchscreen definitions
+//
 #define TFT_CS D0  //for D1 mini or TFT I2C Connector Shield (V1.1.0 or later)
 #define TFT_DC D8  //for D1 mini or TFT I2C Connector Shield (V1.1.0 or later)
 #define TFT_RST -1 //for D1 mini or TFT I2C Connector Shield (V1.1.0 or later)
@@ -46,9 +54,10 @@ const int ledPin =  LED_BUILTIN;  // the number of the LED pin
 // #define TFT_RST 33 //for D32 Pro
 // #define TS_CS  12 //for D32 Pro
 
+// Visual part of the Display
 Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_RST);
+// Touch response part of the display
 XPT2046_Touchscreen ts(TS_CS);
-
 
 // This is calibration data for the raw touch data to the screen coordinates
 #define TS_MINX 700
@@ -56,17 +65,14 @@ XPT2046_Touchscreen ts(TS_CS);
 #define TS_MAXX 3500
 #define TS_MAXY 3800
 
+// Define minimum delays for when screen is touched
 #define DEBOUNCE_DELAY 50
 #define LONGPRESS_DELAY 250
 
 
-// Callback Definitions
-bool onairShortButtonPress ();
-bool onairLongButtonPress ();
-
-MenuButton onairButton = MenuButton("On Air", 0, 1, ILI9341_RED, &onairShortButtonPress, &onairLongButtonPress);
-vector<MenuButton*> onairButtonList = {&onairButton};
-MenuTop onairTopMenu = MenuTop("OnAir", 1, 3, &onairButtonList, ILI9341_RED);
+//
+// Menu definition
+//
 MenuButton frownButton = MenuButton("Frown", 0, 0);
 MenuButton quizicalButton = MenuButton("Quizical", 1, 1);
 MenuButton yesButton = MenuButton("Yes", 2, 2);
@@ -75,28 +81,14 @@ MenuTop headTopMenu = MenuTop("Head", 3, 3, &headButtonList, ILI9341_GREEN);
 vector<MenuTop*> topMenuList = {&onairTopMenu, &headTopMenu};
 Menu menu = Menu(&tft, &ts, &topMenuList);
 
-/*********************
- * Callback Functions
- *********************/
 
-bool onairShortButtonPress () {
-  Serial.println("On Air Short Button Press");
-  onairButton.setColor(ILI9341_ORANGE);
-  return true;
-}
-
-bool onairLongButtonPress () {
-  Serial.println("On Air Long Button Press");
-  onairButton.setColor(ILI9341_PURPLE);
-  return true;
-}
 
 /*************************************************
  * Callback Utilities during setup
  *************************************************/
  
 /*
- * Blink the LED Strip.
+ * Blink the LED.
  * If on  then turn off
  * If off then turn on
  */
@@ -118,6 +110,11 @@ void configModeCallback (WiFiManager *myWiFiManager) {
   ticker.attach(0.2, tick);
 }
 
+
+/**********************************
+ * Global variables and functions
+ **********************************/
+
 // Global Variables
 int16_t screenWidth;
 int16_t screenHeight;
@@ -134,49 +131,74 @@ MenuItem *pressedButton = nullptr;
 void calibrateTouch(TS_Point *tsPoint, int16_t *pressX, int16_t *pressY) {
 
 #ifdef CALIBRATE_DEBUG
-    Serial.print("raw tsPoint.x = ");
-    Serial.println(tsPoint->x);
-    Serial.print("raw tsPoint.y = ");
-    Serial.println(tsPoint->y);
+  tft.fillRect(0, screenHeight-80, screenWidth, 80, ILI9341_BLACK);
+  tft.setTextColor(ILI9341_YELLOW);
+  tft.setTextSize(2);
+  tft.setCursor(0,screenHeight-80);
+  tft.printf("raw x:%4d y:%4d\n", tsPoint->x, tsPoint->y);
+
+  Serial.print("raw tsPoint.x = ");
+  Serial.println(tsPoint->x);
+  Serial.print("raw tsPoint.y = ");
+  Serial.println(tsPoint->y);
 #endif
 
-    // Scale using the calibration #'s
-    // and rotate coordinate system
-    tsPoint->y = map(tsPoint->y, TS_MINY, TS_MAXY, 0, screenHeight);
-    tsPoint->x = map(tsPoint->x, TS_MINX, TS_MAXX, 0, screenWidth);
+  // Scale using the calibration #'s
+  // and rotate coordinate system
+  //TODO: Resolve map() ambiguity with mDNS
+  //tsPoint->y = map(tsPoint->y, TS_MINY, TS_MAXY, 0, screenHeight);
+  tsPoint->y = (tsPoint->y - TS_MINY) * (screenHeight) / (TS_MAXY - TS_MINY);
+  //tsPoint->x = map(tsPoint->x, TS_MINX, TS_MAXX, 0, screenWidth);
+  tsPoint->x = (tsPoint->x - TS_MINX) * (screenWidth) / (TS_MAXX - TS_MINX);
 
 #ifdef CALIBRATE_DEBUG
-    Serial.print("map tsPoint.x = ");
-    Serial.println(tsPoint->x);
-    Serial.print("map tsPoint.y = ");
-    Serial.println(tsPoint->y);
+  tft.printf("map x:%4d y:%4d\n", tsPoint->x, tsPoint->y);
+  Serial.print("map tsPoint.x = ");
+  Serial.println(tsPoint->x);
+  Serial.print("map tsPoint.y = ");
+  Serial.println(tsPoint->y);
 #endif
 
-    *pressY = screenHeight - tsPoint->y;
-    *pressX = tsPoint->x;
+  *pressY = screenHeight - tsPoint->y;
+  *pressX = tsPoint->x;
 
 #ifdef CALIBRATE_DEBUG
-    Serial.print("pressX = ");
-    Serial.println(*pressX);
-    Serial.print("pressY = ");
-    Serial.println(*pressY);
+  tft.printf("ali x:%4d y:%4d\n", *pressX, *pressY);
+  Serial.print("aligned pressX = ");
+  Serial.println(*pressX);
+  Serial.print("aligned pressY = ");
+  Serial.println(*pressY);
 #endif
 
-    if(*pressX > screenWidth) {
-      *pressX = screenWidth;
-    }
-    if(*pressX < 0) {
-      *pressX = 0;
-    }
-    if(*pressY > screenHeight) {
-      *pressY = screenHeight;
-    }
-    if(*pressY < 0) {
-      *pressY = 0;
-    }
+  if(*pressX > screenWidth) {
+    *pressX = screenWidth;
+  }
+  if(*pressX < 0) {
+    *pressX = 0;
+  }
+  if(*pressY > screenHeight) {
+    *pressY = screenHeight;
+  }
+  if(*pressY < 0) {
+    *pressY = 0;
+  }
+
+#ifdef CALIBRATE_DEBUG
+  tft.fillCircle(*pressX, *pressY, 3, ILI9341_YELLOW);
+  tft.printf("bnd x:%4d y:%4d\n", *pressX, *pressY);
+  Serial.print("bounded pressX = ");
+  Serial.println(*pressX);
+  Serial.print("bounded pressY = ");
+  Serial.println(*pressY);
+  //delay(5000);
+#endif
+
 }
 
 
+/*
+ * Set up the device and menus
+ */
 void setup(void)
 {
   Serial.begin(115200);
@@ -201,6 +223,9 @@ void setup(void)
   screenWidth = tft.width();
   screenHeight = tft.height();
 
+  tft.println(ESP.getFullVersion());
+  tft.println();
+
   // start ticker to slow blink LED strip during Setup
   ticker.attach(0.6, tick);
 
@@ -220,11 +245,16 @@ void setup(void)
     delay(1000);
   }
   tft.println("Connected");
+  tft.print("IP: ");
+  tft.println(WiFi.localIP());
+
 
   //
   // Set up the Multicast DNS
+  // needed for OTA
   //
-  //MDNS.begin(devicename);
+  MDNS.begin(devicename);
+  tft.println("mDNS Started");
 
   //
   // Set up OTA
@@ -263,21 +293,37 @@ void setup(void)
     }
   });
   ArduinoOTA.begin();
+  tft.println("OTA Started");
 
-  delay(2000);
+  // Set up On Air
+  onairSetup(&tft);
+  
+
+  //
+  // Keep startup info on the screen for a bit
+  //
+  delay(1000);
 
   if (menu.setup()) {
     Serial.println("MENU started");
+    tft.println("Menu Started");
   }
   else {
     Serial.println("MENU not started");
+    tft.println("Menu not Started");
   }
   menu.setActiveTopMenu(&topMenuList, &onairTopMenu);
+
+  // Hold one more time incase there is some info from menu setup
+  delay(1000);
+
+  // refesh all and display menu
   menu.draw();
   wasTouched = false;
   shortPress = false;
   longPress = false;
   lastPressTime = millis();
+
 
   //
   // Done with Setup
@@ -285,10 +331,15 @@ void setup(void)
   ticker.detach();    // Stop blinking the LED
 }
 
+
+/*
+ * Handle Touch Events along with any housekeeping tasks
+ * like MDNS and OTA events.
+ */
 void loop() {
   // Handle any requests
   ArduinoOTA.handle();
-  //MDNS.update();
+  MDNS.update();
 
   bool redraw = false;
 
@@ -320,14 +371,6 @@ void loop() {
         TS_Point point = ts.getPoint();
         calibrateTouch(&point, &pressX, &pressY);
 
-#ifdef CALIBRATE_DEBUG
-        Serial.print("pressX = ");
-        Serial.println(pressX);
-        Serial.print("pressY = ");
-        Serial.println(pressY);
-        tft.fillCircle(pressX, pressY, 3, ILI9341_YELLOW);
-#endif
-
         // Figure out which button was pressed
         tie(redraw, pressedButton) = menu.handleTouch(pressX, pressY);
         //if (pressedButton) {
@@ -341,7 +384,9 @@ void loop() {
         if (shortPress && !longPress) {
           // Handle any Short Press callback actions
           // Long press is fired as soon as it occurs
-          redraw = pressedButton->callbackShortPress();
+          if (pressedButton) {
+            redraw = pressedButton->callbackShortPress();
+          }
         }
         // Reset everything for next touch event
         shortPress = false;
@@ -357,7 +402,9 @@ void loop() {
         longPress = true;
         // Handle any Long Press callback actions
         // Do immediately, do not wait for unTouch
-        redraw = pressedButton->callbackLongPress();
+        if (pressedButton) {
+          redraw = pressedButton->callbackLongPress();
+        }
       }
     }
   }
