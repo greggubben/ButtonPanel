@@ -55,6 +55,7 @@ using namespace std;
 #define DEBOUNCE_DELAY 50
 #define SHORTPRESS_DELAY 60
 #define LONGPRESS_DELAY 400
+#define SWIPE_MIN_PIXELS 40
 
 
 // Generic definition for button callbacks

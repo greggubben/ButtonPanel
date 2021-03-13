@@ -544,8 +544,8 @@ bool Menu::handle(calibrateTouchCallback _calibrateTouch) {
       else {
         Serial.println("New Stop Touch");
         // Stopped touching
-        if (shortPress && !longPress) {
-          Serial.println("Lets do the Short Press");
+        if (!longPress) {
+          Serial.println("Lets do the Event");
           doEvent = true;
         }
         resetVariables = true;
@@ -554,7 +554,32 @@ bool Menu::handle(calibrateTouchCallback _calibrateTouch) {
 
     // Is the screen still being touched?
     if (isTouched) {
-      if (!shortPress && (millis() - lastPressTime) > SHORTPRESS_DELAY) {
+
+      // Find the calibrated X and Y of the press
+      TS_Point point = _ts->getPoint();
+      int16_t swipeX = point.x;
+      int16_t swipeY = point.y;
+      if (_calibrateTouch) {
+        (*_calibrateTouch)(&swipeX, &swipeY);
+      }
+
+      if (!swipeRight && (swipeX > pressX) && (swipeX - pressX) > SWIPE_MIN_PIXELS) {
+        Serial.println("Swipe Right");
+        swipeRight = true;
+        swipeLeft = false;
+        shortPress = false;
+        longPress = false;
+      }
+      if (!swipeLeft && (pressX > swipeX) && (pressX - swipeX) > SWIPE_MIN_PIXELS) {
+        Serial.println("Swipe Left");
+        swipeLeft = true;
+        swipeRight = false;
+        shortPress = false;
+        longPress = false;
+      }
+
+      if (!shortPress && !swipeLeft && !swipeRight &&
+        (millis() - lastPressTime) > SHORTPRESS_DELAY) {
         Serial.println("Short Press");
         // New Short Press occurred
         // Wait to see if Long Press occurred
@@ -577,7 +602,15 @@ bool Menu::handle(calibrateTouchCallback _calibrateTouch) {
 
   if (doEvent) {
     Serial.println("Do Event");
-    if (longPress) {
+    if (swipeLeft) {
+      Serial.println("Do Swipe Left Event");
+
+    }
+    else if (swipeRight) {
+      Serial.println("Do Swipe Right Event");
+
+    }
+    else if (longPress) {
       Serial.println("Do Long Event");
       // Handle any Long Press callback actions
       // Do immediately, do not wait for unTouch
@@ -611,6 +644,8 @@ bool Menu::handle(calibrateTouchCallback _calibrateTouch) {
     swipeLeft = false;
     swipeRight = false;
     pressedButton = nullptr;
+    pressX = 0;
+    pressY = 0;
   }
 
   // Keep track of last touch state so changes can be identified.
