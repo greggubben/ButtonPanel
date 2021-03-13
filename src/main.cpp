@@ -15,6 +15,7 @@
 #include <vector>
 #include "Menu.h"
 #include "onair.h"
+#include "headControl.h"
 //#include <TelnetSerial.h>       // For debugging via Telnet
 
 // Uncomment the following define to debug the screen calibration
@@ -73,11 +74,7 @@ XPT2046_Touchscreen ts(TS_CS);
 //
 // Menu definition
 //
-MenuButton frownButton = MenuButton("Frown", 0, 0);
-MenuButton quizicalButton = MenuButton("Quizical", 1, 1);
-MenuButton yesButton = MenuButton("Yes", 2, 2);
-vector<MenuButton*> headButtonList = {&frownButton, &quizicalButton, &yesButton};
-MenuTop headTopMenu = MenuTop("Head", 3, 3, &headButtonList, ILI9341_GREEN);
+
 vector<MenuTop*> topMenuList = {&onairTopMenu, &headTopMenu};
 Menu menu = Menu(&tft, &ts, &topMenuList);
 
