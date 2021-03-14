@@ -20,6 +20,10 @@
 
 using namespace std;
 
+// Uncomment the following define to debug the screen Event Handling
+//#define HANDLETOUCH_DEBUG
+
+
 
 /*********************
  * MenuButton Class functions
@@ -114,7 +118,7 @@ bool MenuButton::handleTouch() {
 
 
 /*********************
- * MenuTop Class
+ * MenuPage Class
  *********************/
 
 /*
@@ -372,10 +376,7 @@ bool Menu::setup() {
 
   wasTouched = false;
   debounceTouched = false;
-  shortPress = false;
-  longPress = false;
-  swipeLeft = false;
-  swipeRight = false;
+  touchEvent = EVENT_NONE;
   lastPressTime = millis();
 
   return true;
@@ -524,10 +525,7 @@ bool Menu::handle(calibrateTouchCallback _calibrateTouch) {
       if (isTouched) {
         Serial.println("New Touch");
         // On first press - Don't which of the 4 modes yet
-        shortPress = false;
-        longPress = false;
-        swipeLeft = false;
-        swipeRight = false;
+        touchEvent = EVENT_NONE;
         pressedButton = nullptr;  // New press, don't know button yet
 
         // Find the calibrated X and Y of the press
@@ -544,7 +542,7 @@ bool Menu::handle(calibrateTouchCallback _calibrateTouch) {
       else {
         Serial.println("New Stop Touch");
         // Stopped touching
-        if (!longPress) {
+        if (touchEvent != EVENT_LONG) {
           Serial.println("Lets do the Event");
           doEvent = true;
         }
@@ -563,36 +561,32 @@ bool Menu::handle(calibrateTouchCallback _calibrateTouch) {
         (*_calibrateTouch)(&swipeX, &swipeY);
       }
 
-      if (!swipeRight && (swipeX > pressX) && (swipeX - pressX) > SWIPE_MIN_PIXELS) {
+      if ((touchEvent != EVENT_SWIPE_RIGHT) && (swipeX > pressX) && (swipeX - pressX) > SWIPE_MIN_PIXELS) {
         Serial.println("Swipe Right");
-        swipeRight = true;
-        swipeLeft = false;
-        shortPress = false;
-        longPress = false;
+        touchEvent = EVENT_SWIPE_RIGHT;
       }
-      if (!swipeLeft && (pressX > swipeX) && (pressX - swipeX) > SWIPE_MIN_PIXELS) {
+      if ((touchEvent != EVENT_SWIPE_LEFT) && (pressX > swipeX) && (pressX - swipeX) > SWIPE_MIN_PIXELS) {
         Serial.println("Swipe Left");
-        swipeLeft = true;
-        swipeRight = false;
-        shortPress = false;
-        longPress = false;
+        touchEvent = EVENT_SWIPE_LEFT;
       }
 
-      if (!shortPress && !swipeLeft && !swipeRight &&
-        (millis() - lastPressTime) > SHORTPRESS_DELAY) {
+      if ((touchEvent != EVENT_SHORT) && 
+          (touchEvent != EVENT_SWIPE_LEFT) && 
+          (touchEvent != EVENT_SWIPE_RIGHT) &&
+          ((millis() - lastPressTime) > SHORTPRESS_DELAY)) {
         Serial.println("Short Press");
         // New Short Press occurred
         // Wait to see if Long Press occurred
         // otherwise will perform on unTouch
-        shortPress = true;
+        touchEvent = EVENT_SHORT;
       }
 
       // Short Press being true ensures the press is still active
-      if (shortPress && (millis() - lastPressTime) > LONGPRESS_DELAY) {
-        if (!longPress) {
+      if ((touchEvent == EVENT_SHORT) && (millis() - lastPressTime) > LONGPRESS_DELAY) {
+        if (touchEvent != EVENT_LONG) {
           Serial.println("Long Press");
           // New Long press occurred
-          longPress = true;
+          touchEvent = EVENT_LONG;
           // Do Immediately
           doEvent = true;
         }
@@ -601,32 +595,45 @@ bool Menu::handle(calibrateTouchCallback _calibrateTouch) {
   }
 
   if (doEvent) {
-    Serial.println("Do Event");
-    if (swipeLeft) {
-      Serial.println("Do Swipe Left Event");
+    Serial.print("Do Event ");
+    Serial.println(TouchEventStrings[touchEvent]);
+    switch(touchEvent) {
 
-    }
-    else if (swipeRight) {
-      Serial.println("Do Swipe Right Event");
-
-    }
-    else if (longPress) {
-      Serial.println("Do Long Event");
-      // Handle any Long Press callback actions
-      // Do immediately, do not wait for unTouch
-      if (pressedButton) {
-        Serial.println("Do Long Event Callback");
-        redraw = pressedButton->callbackLongPress();
-      }
-    }
-    else if (shortPress) {
-      Serial.println("Do Short Event");
-      // Handle any Short Press callback actions
-      // Long press is fired as soon as it occurs
-      if (pressedButton) {
-        Serial.println("Do Short Event Callback");
-        redraw = pressedButton->callbackShortPress();
-      }
+//    if (swipeLeft) {
+      case EVENT_SWIPE_LEFT:
+        Serial.println("Do Swipe Left Event");
+        break;
+//    }
+//    else if (swipeRight) {
+      case EVENT_SWIPE_RIGHT:
+        Serial.println("Do Swipe Right Event");
+        break;
+//    }
+//    else if (longPress) {
+      case EVENT_LONG:
+        Serial.println("Do Long Event");
+        // Handle any Long Press callback actions
+        // Do immediately, do not wait for unTouch
+        if (pressedButton) {
+          Serial.println("Do Long Event Callback");
+          redraw = pressedButton->callbackLongPress();
+        }
+        break;
+//    }
+//    else if (shortPress) {
+      case EVENT_SHORT:
+        Serial.println("Do Short Event");
+        // Handle any Short Press callback actions
+        // Long press is fired as soon as it occurs
+        if (pressedButton) {
+          Serial.println("Do Short Event Callback");
+          redraw = pressedButton->callbackShortPress();
+        }
+        break;
+//    }
+      default:
+        Serial.println("Do Nothing");
+        break;
     }
   }
 
@@ -639,10 +646,7 @@ bool Menu::handle(calibrateTouchCallback _calibrateTouch) {
     Serial.println("Reset Variables");
     // Just stopped touching
     // Reset everything for next touch event
-    shortPress = false;
-    longPress = false;
-    swipeLeft = false;
-    swipeRight = false;
+    touchEvent = EVENT_NONE;
     pressedButton = nullptr;
     pressX = 0;
     pressY = 0;

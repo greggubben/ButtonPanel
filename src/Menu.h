@@ -58,6 +58,19 @@ using namespace std;
 #define SWIPE_MIN_PIXELS 40
 
 
+// Contains the Events a touch could generate
+enum TouchEvent {
+  EVENT_NONE = 0,         // No Events occurred
+  EVENT_SHORT = 1,        // Short Press Event has occurred
+  EVENT_LONG = 2,         // Long Press Event has occurred
+  EVENT_SWIPE_RIGHT = 3,  // Swipe Right Event has occurred
+  EVENT_SWIPE_LEFT =4     // Swipe Left Event has occurred
+};
+
+// Text representation of the Touch Events defined by the TouchEvent enum
+static const char* TouchEventStrings[] = {"None", "Short", "Long", "Swipe Right", "Swipe Left"};
+
+
 // Generic definition for button callbacks
 typedef bool (*buttonPressCallback)();
 typedef void (*calibrateTouchCallback)(int16_t*, int16_t*);
@@ -212,10 +225,7 @@ class Menu {
     // Manage state of Menu Interactions
     bool wasTouched = false;      // Prevous loop touch state. Used with isTouched 
     bool debounceTouched = false; // Post Debounce Delay last touch state. Used with isTouched 
-    bool shortPress = false;
-    bool longPress = false;
-    bool swipeLeft = false;
-    bool swipeRight = false;
+    TouchEvent touchEvent = EVENT_NONE;
     int16_t pressX = 0;
     int16_t pressY = 0;
     unsigned long lastPressTime = 0;  // the last time the screen touch state changed
