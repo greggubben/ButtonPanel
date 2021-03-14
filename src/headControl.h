@@ -22,5 +22,5 @@ extern MenuButton frownButton;
 extern MenuButton quizicalButton;
 extern MenuButton yesButton;
 extern vector<MenuButton*> headButtonList;
-extern MenuTop headTopMenu;
+extern MenuPage headTopMenu;
 

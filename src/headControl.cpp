@@ -17,4 +17,4 @@ MenuButton frownButton = MenuButton("Frown", 0, 0);
 MenuButton quizicalButton = MenuButton("Quizical", 1, 1);
 MenuButton yesButton = MenuButton("Yes", 2, 2);
 vector<MenuButton*> headButtonList = {&frownButton, &quizicalButton, &yesButton};
-MenuTop headTopMenu = MenuTop("Head", 3, 3, &headButtonList, ILI9341_GREEN);
+MenuPage headTopMenu = MenuPage("Head", 3, 3, &headButtonList, ILI9341_GREEN);

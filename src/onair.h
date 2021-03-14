@@ -19,7 +19,7 @@ using namespace std;
 
 extern MenuButton onairButton;
 extern vector<MenuButton*> onairButtonList;
-extern MenuTop onairTopMenu;
+extern MenuPage onairTopMenu;
 
 //
 // Functions

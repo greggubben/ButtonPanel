@@ -136,17 +136,17 @@ class MenuButton: public MenuItem {
 
 
 /*********************
- * MenuTop Class
+ * MenuPage Class
  *********************/
 
 //
 // Class for the Buttons across the top
 // This changes the buttons displayed in the panel below
 //
-class MenuTop: public MenuItem {
+class MenuPage: public MenuItem {
   public:
-    MenuTop(const char* label, int16_t buttonsAcross, int16_t buttonsDown, uint16_t menuColor = DEFAULT_TOP_COLOR);
-    MenuTop(const char* label, int16_t buttonsAcross, int16_t buttonsDown, vector<MenuButton*> *menuButtons, uint16_t menuColor = DEFAULT_TOP_COLOR);
+    MenuPage(const char* label, int16_t buttonsAcross, int16_t buttonsDown, uint16_t menuColor = DEFAULT_TOP_COLOR);
+    MenuPage(const char* label, int16_t buttonsAcross, int16_t buttonsDown, vector<MenuButton*> *menuButtons, uint16_t menuColor = DEFAULT_TOP_COLOR);
     void draw(Adafruit_GFX *tft, int16_t buttonX, int16_t buttonY, int16_t buttonWidth, int16_t buttonHeight);
     void drawPanelButtons(Adafruit_GFX *tft, int16_t panelX, int16_t panelY, int16_t panelWidth, int16_t panelHeight);
     tuple<bool, MenuItem *> handleTouch(int16_t pressX, int16_t pressY, int16_t panelX, int16_t panelY, int16_t panelWidth, int16_t panelHeight);
@@ -173,8 +173,8 @@ class MenuTop: public MenuItem {
 class Menu {
   public:
     Menu(Adafruit_GFX *tft, XPT2046_Touchscreen *ts);
-    Menu(Adafruit_GFX *tft, XPT2046_Touchscreen *ts, vector<MenuTop*> *tMenus = nullptr);
-    Menu(Adafruit_GFX *tft, XPT2046_Touchscreen *ts, vector<MenuTop*> *tMenus, uint16_t bgColor);
+    Menu(Adafruit_GFX *tft, XPT2046_Touchscreen *ts, vector<MenuPage*> *tMenus = nullptr);
+    Menu(Adafruit_GFX *tft, XPT2046_Touchscreen *ts, vector<MenuPage*> *tMenus, uint16_t bgColor);
     
     bool handle(calibrateTouchCallback _calibrateTouch = nullptr);
 
@@ -185,11 +185,11 @@ class Menu {
     void draw();
 
 
-    static bool setActiveTopMenu(vector<MenuTop*> *tMenus, MenuTop *activeMenu);
+    static bool setActiveTopMenu(vector<MenuPage*> *tMenus, MenuPage *activeMenu);
 
   private:
     tuple <bool, MenuItem *> handleTouch(int16_t pressX, int16_t pressY);
-    void init(Adafruit_GFX *tft, XPT2046_Touchscreen *ts, vector<MenuTop*> *tMenus = nullptr, uint16_t bgColor = DEFAULT_BACKGROUND_COLOR);
+    void init(Adafruit_GFX *tft, XPT2046_Touchscreen *ts, vector<MenuPage*> *tMenus = nullptr, uint16_t bgColor = DEFAULT_BACKGROUND_COLOR);
     void calculateTopButtonDimensions();
     Adafruit_GFX *_tft;
     XPT2046_Touchscreen *_ts;
@@ -207,7 +207,7 @@ class Menu {
     int16_t panelHeight = 0;
     bool clearScreenBeforeDraw = true;
 
-    vector<MenuTop*> *topMenus = nullptr;
+    vector<MenuPage*> *topMenus = nullptr;
 
     // Manage state of Menu Interactions
     bool wasTouched = false;      // Prevous loop touch state. Used with isTouched 

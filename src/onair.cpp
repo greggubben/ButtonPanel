@@ -18,7 +18,7 @@
 //
 MenuButton onairButton = MenuButton("On Air", 0, 1, ILI9341_RED, &onairShortButtonPress, &onairLongButtonPress);
 vector<MenuButton*> onairButtonList = {&onairButton};
-MenuTop onairTopMenu = MenuTop("OnAir", 1, 3, &onairButtonList, ILI9341_RED);
+MenuPage onairTopMenu = MenuPage("OnAir", 1, 3, &onairButtonList, ILI9341_RED);
 
 
 //

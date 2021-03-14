@@ -75,7 +75,7 @@ XPT2046_Touchscreen ts(TS_CS);
 // Menu definition
 //
 
-vector<MenuTop*> topMenuList = {&onairTopMenu, &headTopMenu};
+vector<MenuPage*> topMenuList = {&onairTopMenu, &headTopMenu};
 Menu menu = Menu(&tft, &ts, &topMenuList);
 
 
@@ -345,6 +345,6 @@ void loop() {
   // Is it time to turn off the screen?
   //if ((millis() - lastPressTime) > SCREEN_OFF_DELAY) {
   //}
-  
+
   wasTouched = isTouched;
 }
