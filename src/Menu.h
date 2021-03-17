@@ -27,21 +27,20 @@ using namespace std;
 
 #define DEFAULT_PADDING_X 2
 #define DEFAULT_PADDING_Y 2
-#define DEFAULT_BUTTONS_X 3
-#define DEFAULT_BUTTONS_Y 4
 #define DEFAULT_BUTTON_CORNER 8
 #define DEFAULT_BUTTON_COLOR ILI9341_CYAN
 #define DEFAULT_BUTTON_TEXT_COLOR ILI9341_WHITE
 #define DEFAULT_BUTTON_TEXT_SIZE 2
 
 
-// MenuTop Defaults
+// MenuPage Defaults
 
-#define DEFAULT_TOP_BUTTONS 3
-#define DEFAULT_TOP_HEIGHT 80
-#define DEFAULT_TOP_COLOR ILI9341_CYAN
-#define DEFAULT_TOP_TEXT_COLOR ILI9341_WHITE
-#define DEFAULT_TOP_TEXT_SIZE 2
+#define DEFAULT_PAGETOP_BUTTONS 3
+#define DEFAULT_PAGETOP_HEIGHT 80
+#define DEFAULT_PAGETOP_COLOR ILI9341_CYAN
+#define DEFAULT_PAGETOP_TEXT_COLOR ILI9341_WHITE
+#define DEFAULT_PAGETOP_TEXT_SIZE 2
+#define DEFAULT_PAGETOP_NEXT_BUTTON_SIZE 3
 
 
 // Menu Defaults
@@ -63,8 +62,8 @@ enum TouchEvent {
   EVENT_NONE = 0,         // No Events occurred
   EVENT_SHORT = 1,        // Short Press Event has occurred
   EVENT_LONG = 2,         // Long Press Event has occurred
-  EVENT_SWIPE_RIGHT = 3,  // Swipe Right Event has occurred
-  EVENT_SWIPE_LEFT =4     // Swipe Left Event has occurred
+  EVENT_SWIPE_RIGHT = 3,  // Finger traveling to Right
+  EVENT_SWIPE_LEFT =4     // Finger travelling to Left
 };
 
 // Text representation of the Touch Events defined by the TouchEvent enum
@@ -158,16 +157,20 @@ class MenuButton: public MenuItem {
 //
 class MenuPage: public MenuItem {
   public:
-    MenuPage(const char* label, int16_t buttonsAcross, int16_t buttonsDown, uint16_t menuColor = DEFAULT_TOP_COLOR);
-    MenuPage(const char* label, int16_t buttonsAcross, int16_t buttonsDown, vector<MenuButton*> *menuButtons, uint16_t menuColor = DEFAULT_TOP_COLOR);
+    MenuPage(const char* label, int16_t buttonsAcross, int16_t buttonsDown, uint16_t menuColor = DEFAULT_PAGETOP_COLOR, buttonPressCallback onShortPress = nullptr, buttonPressCallback onLongPress = nullptr);
+    MenuPage(const char* label, int16_t buttonsAcross, int16_t buttonsDown, vector<MenuButton*> *menuButtons, uint16_t menuColor = DEFAULT_PAGETOP_COLOR, buttonPressCallback onShortPress = nullptr, buttonPressCallback onLongPress = nullptr);
+
     void draw(Adafruit_GFX *tft, int16_t buttonX, int16_t buttonY, int16_t buttonWidth, int16_t buttonHeight);
     void drawPanelButtons(Adafruit_GFX *tft, int16_t panelX, int16_t panelY, int16_t panelWidth, int16_t panelHeight);
-    tuple<bool, MenuItem *> handleTouch(int16_t pressX, int16_t pressY, int16_t panelX, int16_t panelY, int16_t panelWidth, int16_t panelHeight);
+
+    bool setActiveMenuButton(MenuButton *activeButton);
     static bool setActiveMenuButton(vector<MenuButton*> *mButtons, MenuButton *activeButton);
+
+    MenuButton* findTouchedButton(int16_t pressX, int16_t pressY, int16_t panelX, int16_t panelY, int16_t panelWidth, int16_t panelHeight);
 
 
   private:
-    void init(const char* label, int16_t buttonsAcross, int16_t buttonsDown, vector<MenuButton*> *menuButtons, uint16_t menuColor);
+    void init(const char* label, int16_t buttonsAcross, int16_t buttonsDown, vector<MenuButton*> *menuButtons, uint16_t menuColor, buttonPressCallback onShortPress, buttonPressCallback onLongPress);
 
     int16_t buttonsX;         // Number of buttons across
     int16_t buttonsY;         // Number of buttons down
@@ -198,26 +201,32 @@ class Menu {
     void draw();
 
 
+    bool setActiveButton(MenuButton *activeButton);
+    bool setActiveTopMenu(MenuPage *activeMenu);
     static bool setActiveTopMenu(vector<MenuPage*> *tMenus, MenuPage *activeMenu);
 
   private:
-    tuple <bool, MenuItem *> handleTouch(int16_t pressX, int16_t pressY);
+    MenuPage* findTouchedTopButton(int16_t pressX, int16_t pressY);
+    MenuButton* findTouchedButton(int16_t pressX, int16_t pressY);
+
     void init(Adafruit_GFX *tft, XPT2046_Touchscreen *ts, vector<MenuPage*> *tMenus = nullptr, uint16_t bgColor = DEFAULT_BACKGROUND_COLOR);
     void calculateTopButtonDimensions();
+
     Adafruit_GFX *_tft;
     XPT2046_Touchscreen *_ts;
-    uint16_t backgroundColor;
 
+    uint16_t backgroundColor;
     int16_t screenWidth;
     int16_t screenHeight;
-    int16_t topButtons = DEFAULT_TOP_BUTTONS;
-    int16_t topHeight = DEFAULT_TOP_HEIGHT;
+    int16_t topButtons = DEFAULT_PAGETOP_BUTTONS;
+    int16_t topHeight = DEFAULT_PAGETOP_HEIGHT;
     int16_t topButtonWidth = 0;
     int16_t topButtonHeight = 0;
     int16_t panelX = 0;
     int16_t panelY = 0;
     int16_t panelWidth = 0;
     int16_t panelHeight = 0;
+    int startPage = 0;
     bool clearScreenBeforeDraw = true;
 
     vector<MenuPage*> *topMenus = nullptr;
@@ -226,10 +235,11 @@ class Menu {
     bool wasTouched = false;      // Prevous loop touch state. Used with isTouched 
     bool debounceTouched = false; // Post Debounce Delay last touch state. Used with isTouched 
     TouchEvent touchEvent = EVENT_NONE;
-    int16_t pressX = 0;
-    int16_t pressY = 0;
+    int16_t lastPressX = 0;
+    int16_t lastPressY = 0;
     unsigned long lastPressTime = 0;  // the last time the screen touch state changed
-    MenuItem *pressedButton = nullptr;
+    MenuPage *pressedPage = nullptr;
+    MenuButton *pressedButton = nullptr;
 
 };
 

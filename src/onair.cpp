@@ -18,7 +18,7 @@
 //
 MenuButton onairButton = MenuButton("On Air", 0, 1, ILI9341_RED, &onairShortButtonPress, &onairLongButtonPress);
 vector<MenuButton*> onairButtonList = {&onairButton};
-MenuPage onairTopMenu = MenuPage("OnAir", 1, 3, &onairButtonList, ILI9341_RED);
+MenuPage onairTopMenu = MenuPage("OnAir", 1, 3, &onairButtonList, ILI9341_RED, &onairShortPagePress);
 
 
 //
@@ -268,5 +268,15 @@ bool onairShortButtonPress () {
 bool onairLongButtonPress () {
   Serial.println("On Air Long Button Press");
   turnSignOff();
+  return true;
+}
+
+//
+// Handle a short press callback.
+// Get Sign's latest status to update page
+//
+bool onairShortPagePress () {
+  Serial.println("On Air Short Page Press");
+  getSignStatus();
   return true;
 }

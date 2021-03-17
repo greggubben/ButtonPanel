@@ -75,7 +75,11 @@ XPT2046_Touchscreen ts(TS_CS);
 // Menu definition
 //
 
-vector<MenuPage*> topMenuList = {&onairTopMenu, &headTopMenu};
+MenuPage btlTopMenu = MenuPage("BTL", 1, 1, ILI9341_LIGHTGREY);
+MenuPage lightsTopMenu = MenuPage("Light", 1, 1, ILI9341_YELLOW);
+MenuPage statusTopMenu = MenuPage("Status", 1, 1, ILI9341_CYAN);
+
+vector<MenuPage*> topMenuList = {&onairTopMenu, &headTopMenu, &btlTopMenu, &lightsTopMenu, &statusTopMenu};
 Menu menu = Menu(&tft, &ts, &topMenuList);
 
 
@@ -318,7 +322,9 @@ void setup(void)
   //
   // Done with Setup
   //
-  ticker.detach();    // Stop blinking the LED
+  ticker.detach();            // Stop blinking the LED
+  digitalWrite(ledPin, HIGH); // set pin to the opposite state
+
 }
 
 

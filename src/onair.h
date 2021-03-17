@@ -33,5 +33,6 @@ void onairSetup(Adafruit_GFX *tft);
 
 bool onairShortButtonPress ();
 bool onairLongButtonPress ();
+bool onairShortPagePress ();
 
 #endif
