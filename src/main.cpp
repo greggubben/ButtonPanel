@@ -49,6 +49,7 @@ const int ledPin =  LED_BUILTIN;  // On board LED used to show status
 #define TFT_DC D8  //for D1 mini or TFT I2C Connector Shield (V1.1.0 or later)
 #define TFT_RST -1 //for D1 mini or TFT I2C Connector Shield (V1.1.0 or later)
 #define TS_CS D3   //for D1 mini or TFT I2C Connector Shield (V1.1.0 or later)
+#define TFT_LED D2  //for D1 mini to adjust brightness
 
 // #define TFT_CS 14  //for D32 Pro
 // #define TFT_DC 27  //for D32 Pro
@@ -69,7 +70,12 @@ XPT2046_Touchscreen ts(TS_CS);
 // Time to wait to dim or turn off screen
 #define SCREEN_DIM_DELAY 60000    // 1 minute
 #define SCREEN_OFF_DELAY 600000   // 10 minutes
+#define SCREEN_BRIGHTNESS_FULL 255
+#define SCREEN_BRIGHTNESS_DIM 128
+#define SCREEN_BRIGHTNESS_OFF 0
 
+bool screen_dimmed = false;
+bool screen_off = false;
 
 //
 // Menu definition
@@ -204,6 +210,10 @@ void setup(void)
 
   // Set builtin LED as Output
   pinMode(ledPin, OUTPUT);
+  pinMode(TFT_LED, OUTPUT);
+  digitalWrite(TFT_LED, SCREEN_BRIGHTNESS_FULL);
+  screen_dimmed = false;
+  screen_off = false;
 
   tft.begin();
   if (!ts.begin()) { 
@@ -342,15 +352,23 @@ void loop() {
     // There is a change in touch state
   if (isTouched != wasTouched) {
     // Change in touch state
+    digitalWrite(TFT_LED, SCREEN_BRIGHTNESS_FULL);
+    screen_dimmed = false;
+    screen_off = false;
     lastPressTime = millis();
   }
 
   // Is it time to dim the screen?
-  //if ((millis() - lastPressTime) > SCREEN_DIM_DELAY) {
-  //}
+  if ((!screen_dimmed) && ((millis() - lastPressTime) > SCREEN_DIM_DELAY)) {
+    digitalWrite(TFT_LED, SCREEN_BRIGHTNESS_DIM);
+    screen_dimmed = true;
+  }
+
   // Is it time to turn off the screen?
-  //if ((millis() - lastPressTime) > SCREEN_OFF_DELAY) {
-  //}
+  if ((!screen_off) && ((millis() - lastPressTime) > SCREEN_OFF_DELAY)) {
+    digitalWrite(TFT_LED, SCREEN_BRIGHTNESS_OFF);
+    screen_off = true;
+  }
 
   wasTouched = isTouched;
 }

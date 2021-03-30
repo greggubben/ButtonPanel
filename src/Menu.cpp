@@ -815,7 +815,7 @@ bool Menu::handle(calibrateTouchCallback _calibrateTouch) {
         #ifdef MENU_HANDLE_DEBUG
         Serial.println("Do Swipe Left Event");
         #endif
-        if (startPage < (topMenus->size() - DEFAULT_PAGETOP_BUTTONS)) {
+        if (startPage < (int) (topMenus->size() - DEFAULT_PAGETOP_BUTTONS)) {
           // Finger moving to Left
           // Move Top Buttons to Right
           startPage++;
