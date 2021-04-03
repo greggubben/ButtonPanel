@@ -13,6 +13,9 @@
 
 using namespace std;
 
+#define BUTTONPANEL_ONAIR_COLOR ILI9341_RED
+
+
 //
 // Menu Definition
 //

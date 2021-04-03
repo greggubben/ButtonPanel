@@ -16,9 +16,9 @@
 //
 // Menu Definition
 //
-MenuButton onairButton = MenuButton("On Air", 0, 1, ILI9341_RED, &onairShortButtonPress, &onairLongButtonPress);
+MenuButton onairButton = MenuButton("On Air", 0, 1, BUTTONPANEL_ONAIR_COLOR, &onairShortButtonPress, &onairLongButtonPress);
 vector<MenuButton*> onairButtonList = {&onairButton};
-MenuPage onairTopMenu = MenuPage("OnAir", 1, 3, &onairButtonList, ILI9341_RED, &onairShortPagePress);
+MenuPage onairTopMenu = MenuPage("OnAir", 1, 3, &onairButtonList, BUTTONPANEL_ONAIR_COLOR, &onairShortPagePress);
 
 
 //

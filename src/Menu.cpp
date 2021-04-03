@@ -203,6 +203,10 @@ void MenuPage::draw(Adafruit_GFX *tft, int16_t topButtonX, int16_t topButtonY, i
 // Draw a button panel if they exist
 //
 void MenuPage::drawPanelButtons(Adafruit_GFX *tft, int16_t panelX, int16_t panelY, int16_t panelWidth, int16_t panelHeight) {
+  if (drawPanel) {
+    drawPanel(tft, panelX, panelY, panelWidth, panelHeight);
+  }
+
   if (buttons) {
     #ifdef MENU_DRAW_DEBUG
     Serial.println("    Show Panel Buttons");
@@ -979,4 +983,17 @@ void centerText (Adafruit_GFX *tft, String text, int16_t centerX, int16_t center
   tft->setCursor(textX, textY);
   tft->print(text);
 
+}
+
+
+//
+// Function to return the width of a string
+//
+uint16_t getTextWidth (Adafruit_GFX *tft, String text, int16_t textSize) {
+  tft->setTextSize(textSize);
+  int16_t stringX, stringY;
+  uint16_t stringW, stringH;
+  tft->getTextBounds(text, 0, 0, &stringX, &stringY, &stringW, &stringH);
+
+  return stringW;
 }

@@ -4,18 +4,19 @@
 
 #include <Arduino.h>
 #include <LittleFS.h>
-#include <WiFiManager.h>        // For managing the Wifi Connection
-#include <ESP8266mDNS.h>        // For running OTA and Web Server
-#include <WiFiUdp.h>            // For running OTA
-#include <ArduinoOTA.h>         // For running OTA
-#include <SPI.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_ILI9341.h>
-#include <XPT2046_Touchscreen.h>
+#include <WiFiManager.h>          // For managing the Wifi Connection
+#include <ESP8266mDNS.h>          // For running OTA and Web Server
+#include <WiFiUdp.h>              // For running OTA
+#include <ArduinoOTA.h>           // For running OTA
+#include <SPI.h>                  // For display
+#include <Adafruit_GFX.h>         // For display
+#include <Adafruit_ILI9341.h>     // For display
+#include <XPT2046_Touchscreen.h>  // For display
 #include <vector>
 #include "Menu.h"
 #include "onair.h"
 #include "headControl.h"
+#include "status.h"
 //#include <TelnetSerial.h>       // For debugging via Telnet
 
 // Uncomment the following define to debug the screen calibration
@@ -77,13 +78,13 @@ XPT2046_Touchscreen ts(TS_CS);
 bool screen_dimmed = false;
 bool screen_off = false;
 
+
 //
 // Menu definition
 //
 
 MenuPage btlTopMenu = MenuPage("BTL", 1, 1, ILI9341_LIGHTGREY);
 MenuPage lightsTopMenu = MenuPage("Light", 1, 1, ILI9341_YELLOW);
-MenuPage statusTopMenu = MenuPage("Status", 1, 1, ILI9341_CYAN);
 
 vector<MenuPage*> topMenuList = {&onairTopMenu, &headTopMenu, &btlTopMenu, &lightsTopMenu, &statusTopMenu};
 Menu menu = Menu(&tft, &ts, &topMenuList);
@@ -243,6 +244,7 @@ void setup(void)
   WiFi.hostname(devicename);
   WiFi.mode(WIFI_STA);      // explicitly set mode, esp defaults to STA+AP
   WiFiManager wm;
+
   // wm.resetSettings();    // reset settings - for testing
   wm.setAPCallback(configModeCallback); //set callback that gets called when connecting to previous WiFi fails, and enters Access Point mode
   //if it does not connect it starts an access point with the specified name here  "AutoConnectAP"
@@ -303,8 +305,11 @@ void setup(void)
   ArduinoOTA.begin();
   tft.println("OTA Started");
 
+
   // Set up On Air
   onairSetup(&tft);
+  // Set up Status
+  statusSetup(&tft);
   
 
   //

@@ -14,6 +14,9 @@
 
 using namespace std;
 
+#define BUTTONPANEL_HEADCONTROL_COLOR ILI9341_GREEN
+
+
 //
 // Menu Definition
 //

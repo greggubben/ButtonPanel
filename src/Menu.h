@@ -72,6 +72,7 @@ static const char* TouchEventStrings[] = {"None", "Short", "Long", "Swipe Right"
 
 // Generic definition for button callbacks
 typedef bool (*buttonPressCallback)();
+typedef void (*drawPanelFunction)(Adafruit_GFX*, int16_t, int16_t, int16_t, int16_t);
 typedef void (*calibrateTouchCallback)(int16_t*, int16_t*);
 
 
@@ -162,6 +163,7 @@ class MenuPage: public MenuItem {
 
     void draw(Adafruit_GFX *tft, int16_t buttonX, int16_t buttonY, int16_t buttonWidth, int16_t buttonHeight);
     void drawPanelButtons(Adafruit_GFX *tft, int16_t panelX, int16_t panelY, int16_t panelWidth, int16_t panelHeight);
+    void setDrawPanel(drawPanelFunction drawPanelFunc) {drawPanel = drawPanelFunc;};
 
     bool setActiveMenuButton(MenuButton *activeButton);
     static bool setActiveMenuButton(vector<MenuButton*> *mButtons, MenuButton *activeButton);
@@ -175,7 +177,7 @@ class MenuPage: public MenuItem {
     int16_t buttonsX;         // Number of buttons across
     int16_t buttonsY;         // Number of buttons down
     vector<MenuButton*> *buttons = nullptr;
-
+    drawPanelFunction drawPanel = nullptr;
 };
 
 
@@ -250,5 +252,7 @@ class Menu {
 
 void drawButtonOutline(Adafruit_GFX *tft, int16_t buttonX, int16_t buttonY, int16_t buttonWidth, int16_t buttonHeight, uint16_t buttonColor, bool buttonActive);
 void centerText(Adafruit_GFX *tft, String text, int16_t centerX, int16_t centerY, int16_t textSize, uint16_t textColor);
+uint16_t getTextWidth (Adafruit_GFX *tft, String text, int16_t textSize);
+
 
 #endif
