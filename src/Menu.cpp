@@ -78,7 +78,7 @@ bool MenuItem::callbackLongPress() {
  * @param onShortPress Optional callback function when a short press is performed
  * @param onLongPress Optional callback function when a long press is performed
  */ 
-MenuButton::MenuButton(const char* label, int16_t x, int16_t y, uint16_t buttonColor, buttonPressCallback onShortPress, buttonPressCallback onLongPress) {
+MenuButton::MenuButton(const char* label, int16_t x, int16_t y, uint16_t buttonColor, ButtonPressCallback onShortPress, ButtonPressCallback onLongPress) {
   name = String(label);
   positionX = x;
   positionY = y;
@@ -140,7 +140,7 @@ bool MenuButton::handleTouch() {
  * @param buttonsDown   Number of buttons to display down panel
  * @param menuColor     Optional MenuTop color. Default DEFAULT_TOP_COLOR
  */ 
-MenuPage::MenuPage(const char* label, int16_t buttonsAcross, int16_t buttonsDown, uint16_t menuColor, buttonPressCallback onShortPress, buttonPressCallback onLongPress) {
+MenuPage::MenuPage(const char* label, int16_t buttonsAcross, int16_t buttonsDown, uint16_t menuColor, ButtonPressCallback onShortPress, ButtonPressCallback onLongPress) {
   init(label, buttonsAcross, buttonsDown, nullptr, menuColor, onShortPress, onLongPress);
 }
 
@@ -153,7 +153,7 @@ MenuPage::MenuPage(const char* label, int16_t buttonsAcross, int16_t buttonsDown
  * @param menuButtons   Vector containing the list of buttons to display in the panel
  * @param menuColor     Optional MenuTop color. Default DEFAULT_TOP_COLOR
  */ 
-MenuPage::MenuPage(const char* label, int16_t buttonsAcross, int16_t buttonsDown, vector<MenuButton*> *menuButtons, uint16_t menuColor, buttonPressCallback onShortPress, buttonPressCallback onLongPress) {
+MenuPage::MenuPage(const char* label, int16_t buttonsAcross, int16_t buttonsDown, vector<MenuButton*> *menuButtons, uint16_t menuColor, ButtonPressCallback onShortPress, ButtonPressCallback onLongPress) {
   init(label, buttonsAcross, buttonsDown, menuButtons, menuColor, onShortPress, onLongPress);
 }
 
@@ -161,7 +161,7 @@ MenuPage::MenuPage(const char* label, int16_t buttonsAcross, int16_t buttonsDown
 //
 // Initialize the Menu Top variables.
 //
-void MenuPage::init(const char* label, int16_t buttonsAcross, int16_t buttonsDown, vector<MenuButton*> *menuButtons, uint16_t menuColor, buttonPressCallback onShortPress, buttonPressCallback onLongPress) {
+void MenuPage::init(const char* label, int16_t buttonsAcross, int16_t buttonsDown, vector<MenuButton*> *menuButtons, uint16_t menuColor, ButtonPressCallback onShortPress, ButtonPressCallback onLongPress) {
   name = String(label);
   buttonsX = buttonsAcross;
   buttonsY = buttonsDown;
@@ -680,7 +680,7 @@ MenuPage* Menu::findTouchedTopButton(int16_t pressX, int16_t pressY) {
 /*
  * Handle any touch screen actions
  */
-bool Menu::handle(calibrateTouchCallback _calibrateTouch) {
+bool Menu::handle(CalibrateTouchCallback _calibrateTouch) {
   bool redraw = false;
   bool doEvent = false;
   bool resetVariables = false;

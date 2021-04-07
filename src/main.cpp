@@ -84,9 +84,10 @@ bool screen_off = false;
 //
 
 MenuPage btlTopMenu = MenuPage("BTL", 1, 1, ILI9341_LIGHTGREY);
-MenuPage lightsTopMenu = MenuPage("Light", 1, 1, ILI9341_YELLOW);
+//MenuPage lightsTopMenu = MenuPage("Light", 1, 1, ILI9341_YELLOW);
 
-vector<MenuPage*> topMenuList = {&onairTopMenu, &headTopMenu, &btlTopMenu, &lightsTopMenu, &statusTopMenu};
+//vector<MenuPage*> topMenuList = {&onairTopMenu, &headTopMenu, &btlTopMenu, &lightsTopMenu, &statusTopMenu};
+vector<MenuPage*> topMenuList = {&onairTopMenu, &headTopMenu, &btlTopMenu, &statusTopMenu};
 Menu menu = Menu(&tft, &ts, &topMenuList);
 
 
