@@ -27,3 +27,8 @@ extern MenuButton yesButton;
 extern vector<MenuButton*> headButtonList;
 extern MenuPage headTopMenu;
 
+//
+// Functions
+//
+
+void headControlSetup(Adafruit_GFX *tft);
