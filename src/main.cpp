@@ -227,8 +227,8 @@ void setup(void)
 
   tft.fillScreen(ILI9341_BLACK);
   // origin = left,top landscape (USB left upper)
-  tft.setRotation(0);
-  ts.setRotation(0);
+  tft.setRotation(1);
+  ts.setRotation(3);
 
   screenWidth = tft.width();
   screenHeight = tft.height();
@@ -309,6 +309,8 @@ void setup(void)
 
   // Set up On Air
   onairSetup(&tft);
+  // Set up On Air
+  headControlSetup(&tft);
   // Set up Status
   statusSetup(&tft);
   
