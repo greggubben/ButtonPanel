@@ -14,6 +14,7 @@
 #include <XPT2046_Touchscreen.h>  // For display
 #include <vector>
 #include "Menu.h"
+#include "TouchHandler.h"
 #include "onair.h"
 #include "headControl.h"
 #include "status.h"
@@ -88,7 +89,9 @@ MenuPage btlTopMenu = MenuPage("BTL", 1, 1, ILI9341_LIGHTGREY);
 
 //vector<MenuPage*> topMenuList = {&onairTopMenu, &headTopMenu, &btlTopMenu, &lightsTopMenu, &statusTopMenu};
 vector<MenuPage*> topMenuList = {&onairTopMenu, &headTopMenu, &btlTopMenu, &statusTopMenu};
-Menu menu = Menu(&tft, &ts, &topMenuList);
+Menu menu = Menu(&tft, &topMenuList);
+
+TouchHandler touchHandler = TouchHandler(&ts);
 
 
 
@@ -201,6 +204,13 @@ void calibrateTouch(int16_t *pressX, int16_t *pressY) {
 
 }
 
+/*
+ * Call back function when a Touch Event is triggered
+ */
+void touchEventCallback(Event *event) {
+  menu.eventHandler(event);
+}
+
 
 /*
  * Set up the device and menus
@@ -306,6 +316,7 @@ void setup(void)
   ArduinoOTA.begin();
   tft.println("OTA Started");
 
+  touchHandler.start(&touchEventCallback);
 
   // Set up On Air
   onairSetup(&tft);
@@ -355,7 +366,7 @@ void loop() {
   ArduinoOTA.handle();
   MDNS.update();
 
-  bool isTouched = menu.handle(&calibrateTouch);
+  bool isTouched = touchHandler.detectEvent(&calibrateTouch);
 
     // There is a change in touch state
   if (isTouched != wasTouched) {

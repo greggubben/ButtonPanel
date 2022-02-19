@@ -21,54 +21,13 @@
 #include <vector>
 #include <tuple>
 #include "MenuPage.h"
+#include "TouchHandler.h"
 
 using namespace std;
 
 // Menu Defaults
 #define DEFAULT_BACKGROUND_COLOR ILI9341_BLACK    // Default background
 #define DEFAULT_BAR_HEIGHT DEFAULT_BUTTON_CORNER  // Default height of menu page separator bar
-
-
-// Define minimum delays for when screen is touched
-#define DEBOUNCE_DELAY 50       // Minimum amount of millis to detect a touch change
-#define SHORTPRESS_DELAY 60     // Minimum amount of millis to detect a short press
-#define LONGPRESS_DELAY 400     // Minimum amount of millis to detect a long press
-#define SWIPE_MIN_PIXELS 40     // Minimum distance in pixels to detect a swipe action
-
-
-// Contains all the Events a touch could generate
-enum TouchEvent {
-  EVENT_NONE = 0,         // No Events occurred
-  EVENT_SHORT = 1,        // Short Press Event has occurred
-  EVENT_LONG = 2,         // Long Press Event has occurred
-  EVENT_SWIPE_RIGHT = 3,  // Finger traveling to Right
-  EVENT_SWIPE_LEFT =4     // Finger travelling to Left
-};
-
-// Text representation of the Touch Events defined by the TouchEvent enum
-static const char* TouchEventStrings[] = {"None", "Short", "Long", "Swipe Right", "Swipe Left"};
-
-
-/*********************
- * Generic definitions for passing functions as arguments
- *********************/
-
-
-
-/*!
- * @brief Function to calibrate the touch position to the display position
- * 
- * @param int16_t* pointer to the raw X position, calibrated result set by function
- * @param int16_t* pointer to the raw Y position, calibrated result set by function
- * 
- * @return calibrated results overwrites input parameters.
- */
-typedef void (*CalibrateTouchCallback)(int16_t*, int16_t*);
-
-
-
-
-
 
 
 /*********************
@@ -80,11 +39,10 @@ typedef void (*CalibrateTouchCallback)(int16_t*, int16_t*);
 //
 class Menu {
   public:
-    Menu(Adafruit_GFX *tft, XPT2046_Touchscreen *ts);
-    Menu(Adafruit_GFX *tft, XPT2046_Touchscreen *ts, vector<MenuPage*> *tMenus = nullptr);
-    Menu(Adafruit_GFX *tft, XPT2046_Touchscreen *ts, vector<MenuPage*> *tMenus, uint16_t bgColor);
+    Menu(Adafruit_GFX *tft);
+    Menu(Adafruit_GFX *tft, vector<MenuPage*> *tMenus = nullptr);
+    Menu(Adafruit_GFX *tft, vector<MenuPage*> *tMenus, uint16_t bgColor);
     
-    bool handle(CalibrateTouchCallback _calibrateTouch = nullptr);
 
     void setTopButtons(int16_t buttons);
     void setTopHeight(int16_t height);
@@ -92,6 +50,7 @@ class Menu {
     bool setup();
     void draw();
 
+    void eventHandler(Event *event);
 
     bool setActiveButton(MenuButton *activeButton);
     bool setActiveTopMenu(MenuPage *activeMenu);
@@ -101,11 +60,10 @@ class Menu {
     MenuPage* findTouchedTopButton(int16_t pressX, int16_t pressY);
     MenuButton* findTouchedButton(int16_t pressX, int16_t pressY);
 
-    void init(Adafruit_GFX *tft, XPT2046_Touchscreen *ts, vector<MenuPage*> *tMenus = nullptr, uint16_t bgColor = DEFAULT_BACKGROUND_COLOR);
+    void init(Adafruit_GFX *tft, vector<MenuPage*> *tMenus = nullptr, uint16_t bgColor = DEFAULT_BACKGROUND_COLOR);
     void calculateTopButtonDimensions();
 
     Adafruit_GFX *_tft;
-    XPT2046_Touchscreen *_ts;
 
     uint16_t backgroundColor;
     int16_t screenWidth;
@@ -123,13 +81,6 @@ class Menu {
 
     vector<MenuPage*> *topMenus = nullptr;
 
-    // Manage state of Menu Interactions
-    bool wasTouched = false;      // Prevous loop touch state. Used with isTouched 
-    bool debounceTouched = false; // Post Debounce Delay last touch state. Used with isTouched 
-    TouchEvent touchEvent = EVENT_NONE;
-    int16_t lastPressX = 0;
-    int16_t lastPressY = 0;
-    unsigned long lastPressTime = 0;  // the last time the screen touch state changed
     MenuPage *pressedPage = nullptr;
     MenuButton *pressedButton = nullptr;
 

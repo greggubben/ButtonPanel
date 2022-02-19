@@ -20,9 +20,6 @@
 
 using namespace std;
 
-// Uncomment the following define to debug the screen Event Handling
-//#define MENU_HANDLE_DEBUG
-
 // Uncomment the following define to debug the Finding of a pressed Button
 //#define MENU_FINDBUTTON_DEBUG
 
@@ -32,36 +29,31 @@ using namespace std;
 // Uncomment the following define to debug the screen Draw
 //#define MENU_DRAW_DEBUG
 
-
-
-
-
-
-
+// Uncomment the following define to debug the screen Event Handling
+#define MENU_HANDLE_DEBUG
 
 
 /*********************
  * Menu Class
  *********************/
 
-Menu::Menu(Adafruit_GFX *tft, XPT2046_Touchscreen *ts) {
-  init(tft, ts, nullptr, DEFAULT_BACKGROUND_COLOR);
+Menu::Menu(Adafruit_GFX *tft) {
+  init(tft, nullptr, DEFAULT_BACKGROUND_COLOR);
 }
 
-Menu::Menu(Adafruit_GFX *tft, XPT2046_Touchscreen *ts, vector<MenuPage*> *tMenus) {
-  init(tft, ts, tMenus, DEFAULT_BACKGROUND_COLOR);
+Menu::Menu(Adafruit_GFX *tft, vector<MenuPage*> *tMenus) {
+  init(tft, tMenus, DEFAULT_BACKGROUND_COLOR);
 }
 
-Menu::Menu(Adafruit_GFX *tft, XPT2046_Touchscreen *ts, vector<MenuPage*> *tMenus, uint16_t bgColor) {
-  init(tft, ts, tMenus, bgColor);
+Menu::Menu(Adafruit_GFX *tft, vector<MenuPage*> *tMenus, uint16_t bgColor) {
+  init(tft, tMenus, bgColor);
 }
 
 //
 // Initialize the Menu variables
 //
-void Menu::init(Adafruit_GFX *tft, XPT2046_Touchscreen *ts, vector<MenuPage*> *tMenus, uint16_t bgColor) {
+void Menu::init(Adafruit_GFX *tft, vector<MenuPage*> *tMenus, uint16_t bgColor) {
   _tft = tft;
-  _ts = ts;
   backgroundColor = bgColor;
   topMenus = tMenus;
   startPage = 0;
@@ -119,11 +111,6 @@ bool Menu::setup() {
   }
 
   calculateTopButtonDimensions();
-
-  wasTouched = false;
-  debounceTouched = false;
-  touchEvent = EVENT_NONE;
-  lastPressTime = millis();
 
   return true;
 }
@@ -375,142 +362,32 @@ MenuPage* Menu::findTouchedTopButton(int16_t pressX, int16_t pressY) {
 /*
  * Handle any touch screen actions
  */
-bool Menu::handle(CalibrateTouchCallback _calibrateTouch) {
+void Menu::eventHandler(Event *event) {
   bool redraw = false;
-  bool doEvent = false;
-  bool resetVariables = false;
 
-  // Get current state of screen being touched
-  bool isTouched = _ts->touched();
-
-  // There is a change in touch state
-  if (isTouched != wasTouched) {
-    // Change in touch state
-    lastPressTime = millis();
+  pressedButton = nullptr;  // New press, don't know button yet
+  pressedPage = nullptr;  // New press, don't know button yet
+  // Figure out which button was pressed
+  if (event->pressY < topButtonHeight) {
+    #ifdef MENU_HANDLE_DEBUG
+    Serial.println("Top Button Area");
+    #endif
+    pressedPage = findTouchedTopButton(event->pressX, event->pressY);
+  }
+  else {
+    #ifdef MENU_HANDLE_DEBUG
+    Serial.println("Button Panel Area");
+    #endif
+    pressedButton = findTouchedButton(event->pressX, event->pressY);
   }
 
-  // Make sure the screen touch state has stabilized
-  if ((millis() - lastPressTime) > DEBOUNCE_DELAY) {
+  #ifdef MENU_HANDLE_DEBUG
+  Serial.println("Do Event: ");
+  Serial.println(TouchEventNames[event->event]);
+  #endif
 
-    // Is there a change in touch state?
-    if (isTouched != debounceTouched) {
-      #ifdef MENU_HANDLE_DEBUG
-      Serial.println("Touch Change");
-      #endif
-      debounceTouched = isTouched;
-
-      // New press
-      if (isTouched) {
-        #ifdef MENU_HANDLE_DEBUG
-        Serial.println("New Touch");
-        #endif
-        // On first press - Don't which of the 4 modes yet
-        touchEvent = EVENT_NONE;
-        pressedButton = nullptr;  // New press, don't know button yet
-        pressedPage = nullptr;  // New press, don't know button yet
-
-        // Find the calibrated X and Y of the press
-        TS_Point point = _ts->getPoint();
-        lastPressX = point.x;
-        lastPressY = point.y;
-        if (_calibrateTouch) {
-          (*_calibrateTouch)(&lastPressX, &lastPressY);
-        }
-
-        // Figure out which button was pressed
-        if (lastPressY < topButtonHeight) {
-          #ifdef MENU_HANDLE_DEBUG
-          Serial.println("Top Button Area");
-          #endif
-          pressedPage = findTouchedTopButton(lastPressX, lastPressY);
-        }
-        else {
-          #ifdef MENU_HANDLE_DEBUG
-          Serial.println("Button Panel Area");
-          #endif
-          pressedButton = findTouchedButton(lastPressX, lastPressY);
-        }
-      }
-      else {
-        #ifdef MENU_HANDLE_DEBUG
-        Serial.println("New Stop Touch");
-        #endif
-        // Stopped touching
-        if (touchEvent != EVENT_LONG) {
-          #ifdef MENU_HANDLE_DEBUG
-          Serial.println("Lets do the Event");
-          #endif
-          doEvent = true;
-        }
-        resetVariables = true;
-      }
-    }
-
-    // Is the screen still being touched?
-    if (isTouched) {
-
-      // Find the calibrated X and Y of the press
-      TS_Point point = _ts->getPoint();
-      int16_t swipeX = point.x;
-      int16_t swipeY = point.y;
-      if (_calibrateTouch) {
-        (*_calibrateTouch)(&swipeX, &swipeY);
-      }
-
-      if ((touchEvent != EVENT_SWIPE_RIGHT) && (swipeX > lastPressX) && (swipeX - lastPressX) > SWIPE_MIN_PIXELS) {
-        #ifdef MENU_HANDLE_DEBUG
-        Serial.println("Swipe Right");
-        #endif
-        touchEvent = EVENT_SWIPE_RIGHT;
-        pressedPage = nullptr;        // Swiping not pressing
-        pressedButton = nullptr;        // Swiping not pressing
-      }
-      if ((touchEvent != EVENT_SWIPE_LEFT) && (lastPressX > swipeX) && (lastPressX - swipeX) > SWIPE_MIN_PIXELS) {
-        #ifdef MENU_HANDLE_DEBUG
-        Serial.println("Swipe Left");
-        #endif
-        touchEvent = EVENT_SWIPE_LEFT;
-        pressedPage = nullptr;        // Swiping not pressing
-        pressedButton = nullptr;        // Swiping not pressing
-      }
-
-      if ((touchEvent != EVENT_SHORT) && 
-          (touchEvent != EVENT_SWIPE_LEFT) && 
-          (touchEvent != EVENT_SWIPE_RIGHT) &&
-          ((millis() - lastPressTime) > SHORTPRESS_DELAY)) {
-        #ifdef MENU_HANDLE_DEBUG
-        Serial.println("Short Press");
-        #endif
-        // New Short Press occurred
-        // Wait to see if Long Press occurred
-        // otherwise will perform on unTouch
-        touchEvent = EVENT_SHORT;
-      }
-
-      // Short Press being true ensures the press is still active
-      if ((touchEvent == EVENT_SHORT) && (millis() - lastPressTime) > LONGPRESS_DELAY) {
-        if (touchEvent != EVENT_LONG) {
-          #ifdef MENU_HANDLE_DEBUG
-          Serial.println("Long Press");
-          #endif
-          // New Long press occurred
-          touchEvent = EVENT_LONG;
-          // Do Immediately
-          doEvent = true;
-        }
-      }
-    }
-  }
-
-  if (doEvent) {
-    //#ifdef MENU_HANDLE_DEBUG
-    Serial.print("Do Event: ");
-    Serial.println(TouchEventStrings[touchEvent]);
-    //#endif
-    switch(touchEvent) {
-
-//    if (swipeLeft) {
-      case EVENT_SWIPE_LEFT:
+  switch(event->event) {
+    case EVENT_SWIPE_LEFT:
         #ifdef MENU_HANDLE_DEBUG
         Serial.println("Do Swipe Left Event");
         #endif
@@ -521,9 +398,8 @@ bool Menu::handle(CalibrateTouchCallback _calibrateTouch) {
           redraw = true;
         }
         break;
-//    }
-//    else if (swipeRight) {
-      case EVENT_SWIPE_RIGHT:
+
+    case EVENT_SWIPE_RIGHT:
         #ifdef MENU_HANDLE_DEBUG
         Serial.println("Do Swipe Right Event");
         #endif
@@ -534,9 +410,8 @@ bool Menu::handle(CalibrateTouchCallback _calibrateTouch) {
           redraw = true;
         }
         break;
-//    }
-//    else if (longPress) {
-      case EVENT_LONG:
+
+    case EVENT_LONG:
         #ifdef MENU_HANDLE_DEBUG
         Serial.println("Do Long Event");
         #endif
@@ -561,9 +436,8 @@ bool Menu::handle(CalibrateTouchCallback _calibrateTouch) {
           redraw = set_redraw || callback_redraw;
         }
         break;
-//    }
-//    else if (shortPress) {
-      case EVENT_SHORT:
+
+    case EVENT_SHORT:
         // Handle any Short Press callback actions
         // Long press is fired as soon as it occurs
         #ifdef MENU_HANDLE_DEBUG
@@ -588,13 +462,12 @@ bool Menu::handle(CalibrateTouchCallback _calibrateTouch) {
           redraw = set_redraw || callback_redraw;
         }
         break;
-//    }
-      default:
+
+    default:
         #ifdef MENU_HANDLE_DEBUG
         Serial.println("Do Nothing");
         #endif
         break;
-    }
   }
 
   // Re-draw the menus
@@ -605,22 +478,5 @@ bool Menu::handle(CalibrateTouchCallback _calibrateTouch) {
     draw();
   }
 
-  if (resetVariables) {
-    #ifdef MENU_HANDLE_DEBUG
-    Serial.println("Reset Variables");
-    #endif
-    // Just stopped touching
-    // Reset everything for next touch event
-    touchEvent = EVENT_NONE;
-    pressedButton = nullptr;
-    lastPressX = 0;
-    lastPressY = 0;
-  }
-
-  // Keep track of last touch state so changes can be identified.
-  wasTouched = isTouched;
-
-  // Provide current state of the screen being touched
-  return isTouched;
 }
 
