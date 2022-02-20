@@ -15,6 +15,8 @@
 using namespace std;
 
 #define BUTTONPANEL_HEADCONTROL_COLOR ILI9341_GREEN
+#define HEADCONTROL_SELECTED_COLOR ILI9341_GREEN
+#define HEADCONTROL_SELECTED_TEXTCOLOR ILI9341_BLACK
 
 
 //
@@ -32,3 +34,7 @@ extern MenuPage headTopMenu;
 //
 
 void headControlSetup(Adafruit_GFX *tft);
+
+bool headControlShortPagePress();
+
+void headControlShortButtonPress (int faceNum);

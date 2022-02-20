@@ -9,22 +9,49 @@
 
 #include <Adafruit_GFX.h>
 #include <Adafruit_ILI9341.h>
-#include "Menu.h"
+//#include "Menu.h"
 #include "headControl.h"
 
+bool headControlShortButtonPress0 () {
+  headControlShortButtonPress(0);
+  return true;
+}
+bool headControlShortButtonPress1 () {
+  headControlShortButtonPress(1);
+  return true;
+}
+bool headControlShortButtonPress2 () {
+  headControlShortButtonPress(2);
+  return true;
+}
+bool headControlShortButtonPress3 () {
+  headControlShortButtonPress(3);
+  return true;
+}
+bool headControlShortButtonPress4 () {
+  headControlShortButtonPress(4);
+  return true;
+}
+bool headControlShortButtonPress5 () {
+  headControlShortButtonPress(5);
+  return true;
+}
 
-MenuButton frownButton = MenuButton("Frown", 0, 0);
-MenuButton quizicalButton = MenuButton("What?", 1, 1);
-MenuButton yesButton = MenuButton("Yes", 2, 2);
-vector<MenuButton*> headButtonList = {&frownButton, &quizicalButton, &yesButton};
-MenuPage headTopMenu = MenuPage("Head", 3, 3, &headButtonList, BUTTONPANEL_HEADCONTROL_COLOR);
+MenuButton face0Button = MenuButton("Face0", 0, 0, DEFAULT_BUTTON_COLOR, &headControlShortButtonPress0);
+MenuButton face1Button = MenuButton("Face1", 1, 0, DEFAULT_BUTTON_COLOR, &headControlShortButtonPress1);
+MenuButton face2Button = MenuButton("Face2", 2, 0, DEFAULT_BUTTON_COLOR, &headControlShortButtonPress2);
+MenuButton face3Button = MenuButton("Face3", 0, 1, DEFAULT_BUTTON_COLOR, &headControlShortButtonPress3);
+MenuButton face4Button = MenuButton("Face4", 1, 1, DEFAULT_BUTTON_COLOR, &headControlShortButtonPress4);
+MenuButton face5Button = MenuButton("Face5", 2, 1, DEFAULT_BUTTON_COLOR, &headControlShortButtonPress5);
+vector<MenuButton*> headButtonList = {&face0Button, &face1Button, &face2Button, &face3Button, &face4Button, &face5Button};
+MenuPage headTopMenu = MenuPage("Head", 3, 2, &headButtonList, BUTTONPANEL_HEADCONTROL_COLOR, &headControlShortPagePress);
 
 
 //
 // Head Control Variables
 //
 String headPath = "/face";        // Path to Service
-String headName = "headControl";  // Must match devicename above
+String headName = "headcontrol";  // Must match devicename above
 int faceSelected = 0;             // Face selected
 
 // The following will be overwritten when the mDNS query is performed
@@ -32,6 +59,23 @@ String   headHost = headName + ".local";  // Default Host
 String   headIP = headHost;               // Default to sign hostname
 uint16_t headPort = 80;                   // Default Port
 
+/*
+ * Add a face to the page
+ */
+void addFace (unsigned int faceNum, String faceName, bool faceSelected) {
+  MenuButton *faceButton = headButtonList.at(faceNum);
+  faceButton->setName(faceName);
+  if (faceSelected) {
+    faceButton->setActive();
+    faceButton->setColor(HEADCONTROL_SELECTED_COLOR);
+    faceButton->setTextColor(HEADCONTROL_SELECTED_TEXTCOLOR);
+  }
+  else {
+    faceButton->setInactive();
+    faceButton->setColor(DEFAULT_BUTTON_COLOR);
+    faceButton->setTextColor(DEFAULT_BUTTON_TEXT_COLOR);
+  }
+}
 
 
 //
@@ -86,13 +130,16 @@ void findHeadIP(Adafruit_GFX *tft) {
 void sendHeadCommand (const char* type, const String& requestPath) {
   WiFiClient wifiClient;
   HTTPClient http;
+  //String serverPath = "http://" + headHost +":80" + requestPath;
+  //Serial.println(serverPath);
+  //http.begin(wifiClient, serverPath.c_str());
   http.begin(wifiClient, headIP, headPort, requestPath);
   int httpCode = http.sendRequest(type);
   if (httpCode == HTTP_CODE_OK) {
     // Received a good response
     String payload = http.getString();
     Serial.println(payload);
-    DynamicJsonDocument requestDoc(1024);
+    DynamicJsonDocument requestDoc(2048);
     DeserializationError error = deserializeJson(requestDoc, payload);
     if (error) {
       Serial.println("Bad Request - Parsing JSON Body Failed");
@@ -101,39 +148,28 @@ void sendHeadCommand (const char* type, const String& requestPath) {
       // No issues parsing the response as a JSON payload
 
       // Get the current color of the onair sign 
-      if (requestDoc.containsKey("color")) {
-        String colorStr = requestDoc["color"];
-        if (colorStr.charAt(0) == '#') {
-          colorStr.setCharAt(0, '0');
+      if (requestDoc.containsKey("faces")) {
+        JsonArray faces = requestDoc["faces"];
+        for(JsonVariant face : faces) {
+          unsigned int faceNum = face["faceNum"].as<unsigned int>();
+          String faceName = face["name"].as<String>();
+          bool faceSelected = face["selected"].as<bool>();
+          Serial.print("Face Num: ");
+          Serial.print(faceNum);
+          Serial.print(" Name: ");
+          Serial.print(faceName);
+          Serial.print(" Selected: ");
+          Serial.print(faceSelected);
+          Serial.println();
+          addFace(faceNum, faceName, faceSelected);
         }
-        char color_c[10] = "";
-        colorStr.toCharArray(color_c, 8);
-        uint32_t color24 = strtol(color_c, NULL, 16);
-        //uint16_t color565 = colorRGB24toRGB565(color24);
-
-        //Serial.printf("JSON Color = %s\n", color_c);
-        //Serial.printf("  Color 24 = %x\n", color24);
-        //Serial.printf(" Color RBG = %x\n", color565);
-
-        // Set color of Button to match color of sign
-        //onairButton.setColor(color565);
       }
 
-      // Get the current on/off state of the onair sign
-      if (requestDoc.containsKey("lightOn")) {
-        //lightOn = requestDoc["lightOn"];
-        //if (lightOn) {
-          //turnButtonOn();
-        //}
-        //else {
-          //turnButtonOff();
-        //}
-      }
     }
 
   }
   else {
-    Serial.printf("[sendSignCommand] %s failed, code: %d; error: %s\n", type, httpCode, http.errorToString(httpCode).c_str());
+    Serial.printf("[sendHeadCommand] %s failed, code: %d; error: %s\n", type, httpCode, http.errorToString(httpCode).c_str());
     String payload = http.getString();
     Serial.println(payload);
   }
@@ -175,3 +211,18 @@ void headControlSetup (Adafruit_GFX *tft) {
 }
 
 
+//
+// Handle a short press callback.
+// Get Sign's latest status to update page
+//
+bool headControlShortPagePress () {
+  Serial.println("Head Control Short Page Press");
+  getHeadStatus();
+  return true;
+}
+
+
+void headControlShortButtonPress (int faceNum) {
+  String faceSelectPath = headPath + "?faceNum=" + String(faceNum);
+  sendHeadCommand("PUT", faceSelectPath);
+}
