@@ -29,7 +29,7 @@ extern MenuPage statusTopMenu;
 
 void showStatus (Adafruit_GFX *tft, int16_t panelX, int16_t panelY, int16_t panelWidth, int16_t panelHeight);
 
-void statusSetup(Adafruit_GFX *tft);
+void statusSetup(Adafruit_GFX *tft, NTPClient *tc);
 
 //
 // Callback Definitions

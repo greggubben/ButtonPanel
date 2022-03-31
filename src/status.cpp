@@ -17,9 +17,9 @@
 //
 // NTP
 //
-const long utcOffsetInSeconds = -5 * 3600; // EDT is -5 hours from UTC
-WiFiUDP ntpUDP;
-NTPClient timeClient(ntpUDP, "pool.ntp.org", utcOffsetInSeconds);
+//const long utcOffsetInSeconds = -5 * 3600; // EDT is -5 hours from UTC
+//WiFiUDP ntpUDP;
+NTPClient *statusTimeClient;
 String months[12]={"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 
 //
@@ -39,13 +39,14 @@ MenuPage statusTopMenu = MenuPage("Status", 2, 2, &statusButtonList, BUTTONPANEL
 // Show the Status on the page
 void showStatus (Adafruit_GFX *tft, int16_t panelX, int16_t panelY, int16_t panelWidth, int16_t panelHeight) {
 
-    timeClient.update();
-    unsigned long epochTime = timeClient.getEpochTime();
-    struct tm *ptm = gmtime ((time_t *)&epochTime);
+    //timeClient.update();
+    time_t epochTime = statusTimeClient->getEpochTime();
+    struct tm *ptm = gmtime (&epochTime);
     //int currentMonth = ptm->tm_mon;
     int currentDay = ptm->tm_mday;
     String currentMonth = months[ptm->tm_mon];
     int currentYear = ptm->tm_year+1900;
+    //int currentYear = ptm->tm_year;
 
     tft->setCursor(panelX, panelY + BUTTONPANEL_STATUS_PADDING_TOP);
     tft->setTextSize(2);
@@ -60,7 +61,7 @@ void showStatus (Adafruit_GFX *tft, int16_t panelX, int16_t panelY, int16_t pane
     tft->print("-");
     tft->println(currentYear);
     tft->print("Time: ");
-    tft->println(timeClient.getFormattedTime());
+    tft->println(statusTimeClient->getFormattedTime());
     tft->print("SSID: ");
     tft->println(WiFi.SSID());
     tft->print("  IP: ");
@@ -71,7 +72,7 @@ void showStatus (Adafruit_GFX *tft, int16_t panelX, int16_t panelY, int16_t pane
 
 //
 // Perform Status Button Panel first time set up
-void statusSetup (Adafruit_GFX *tft) {
+void statusSetup (Adafruit_GFX *tft, NTPClient *tc) {
   // Set up Status
   tft->println("Setup Status");
 
@@ -80,9 +81,11 @@ void statusSetup (Adafruit_GFX *tft) {
   statusTopMenu.setDrawPanel(&showStatus);
   
 
+  //Save pointer to NTP Client
+  statusTimeClient = tc;
   //Start NTP Client
-  timeClient.begin();
-  tft->println("Time Client Started");
+  //timeClient.begin();
+  //tft->println("Time Client Started");
 
 
 }

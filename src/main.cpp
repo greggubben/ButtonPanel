@@ -6,12 +6,13 @@
 #include <LittleFS.h>
 #include <WiFiManager.h>          // For managing the Wifi Connection
 #include <ESP8266mDNS.h>          // For running OTA and Web Server
-#include <WiFiUdp.h>              // For running OTA
+#include <WiFiUdp.h>              // For running OTA and Network time
 #include <ArduinoOTA.h>           // For running OTA
 #include <SPI.h>                  // For display
 #include <Adafruit_GFX.h>         // For display
 #include <Adafruit_ILI9341.h>     // For display
 #include <XPT2046_Touchscreen.h>  // For display
+#include <NTPClient.h>            // For getting the network time
 #include <vector>
 #include "Menu.h"
 #include "TouchHandler.h"
@@ -43,6 +44,11 @@ Ticker ticker;            // Process to blink LED during setup
 boolean ledState = LOW;   // Used for blinking LEDs when WifiManager in Connecting and Configuring
 const int ledPin =  LED_BUILTIN;  // On board LED used to show status
 
+//
+// Config to get the time from an NTP server pool
+//
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP);
 
 //
 // TFT Touchscreen definitions
@@ -78,7 +84,7 @@ XPT2046_Touchscreen ts(TS_CS);
 
 bool screen_dimmed = false;
 bool screen_off = false;
-
+bool screenAlwaysOn = true;
 
 //
 // Menu definition
@@ -120,6 +126,27 @@ void configModeCallback (WiFiManager *myWiFiManager) {
   //Serial.println(myWiFiManager->getConfigPortalSSID());
   //entered config mode, make led toggle faster
   ticker.attach(0.2, tick);
+}
+
+
+/*************************************************
+ * Callback Utility for determining if screen should always be on
+ *************************************************/
+ 
+/*
+ * Determine if screen should always be on.
+ * Workday between 7:00am and 5pm
+ */
+void alwaysOnTick()
+{
+  int day = timeClient.getDay();
+  int hour = timeClient.getHours();
+  if ((1 <= day && day <= 5) && (7 <= hour && hour <= 17)) {
+    screenAlwaysOn = true;
+  }
+  else {
+    screenAlwaysOn = false;
+  }
 }
 
 
@@ -316,6 +343,13 @@ void setup(void)
   ArduinoOTA.begin();
   tft.println("OTA Started");
 
+  // Set up the time
+  timeClient.setTimeOffset(-4*3600);
+  timeClient.setUpdateInterval(3600000);
+  timeClient.begin();
+  timeClient.update();
+  tft.println("Time Started");
+
   touchHandler.start(&touchEventCallback);
 
   // Set up On Air
@@ -323,8 +357,7 @@ void setup(void)
   // Set up On Air
   headControlSetup(&tft);
   // Set up Status
-  statusSetup(&tft);
-  
+  statusSetup(&tft, &timeClient);
 
   //
   // Keep startup info on the screen for a bit
@@ -353,6 +386,7 @@ void setup(void)
   //
   ticker.detach();            // Stop blinking the LED
   digitalWrite(ledPin, HIGH); // set pin to the opposite state
+  ticker.attach(5*60, alwaysOnTick);  // Check if screen should always be on
 
 }
 
@@ -365,11 +399,12 @@ void loop() {
   // Handle any requests
   ArduinoOTA.handle();
   MDNS.update();
+  timeClient.update();
 
   bool isTouched = touchHandler.detectEvent(&calibrateTouch);
 
     // There is a change in touch state
-  if (isTouched != wasTouched) {
+  if ((isTouched != wasTouched) || (screenAlwaysOn && (screen_dimmed || screen_off))) {
     // Change in touch state
     digitalWrite(TFT_LED, SCREEN_BRIGHTNESS_FULL);
     screen_dimmed = false;
@@ -378,13 +413,13 @@ void loop() {
   }
 
   // Is it time to dim the screen?
-  if ((!screen_dimmed) && ((millis() - lastPressTime) > SCREEN_DIM_DELAY)) {
+  if (!screenAlwaysOn && ((!screen_dimmed) && ((millis() - lastPressTime) > SCREEN_DIM_DELAY))) {
     digitalWrite(TFT_LED, SCREEN_BRIGHTNESS_DIM);
     screen_dimmed = true;
   }
 
   // Is it time to turn off the screen?
-  if ((!screen_off) && ((millis() - lastPressTime) > SCREEN_OFF_DELAY)) {
+  if (!screenAlwaysOn && ((!screen_off) && ((millis() - lastPressTime) > SCREEN_OFF_DELAY))) {
     digitalWrite(TFT_LED, SCREEN_BRIGHTNESS_OFF);
     screen_off = true;
   }
